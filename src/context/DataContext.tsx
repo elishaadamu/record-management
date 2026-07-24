@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { TaskItem, ApprovalRequest, AuditLog, AppNotification, SystemSettings, UserRole, TaskStatus } from '../types';
+import { TaskItem, ApprovalRequest, AuditLog, AppNotification, SystemSettings, UserRole, TaskStatus } from '@types';
 import {
   INITIAL_TASKS,
   INITIAL_APPROVALS,
   INITIAL_AUDIT_LOGS,
   INITIAL_NOTIFICATIONS,
   INITIAL_SETTINGS
-} from '../data/mockData';
+} from '@data/mockData';
 
 interface DataContextType {
   tasks: TaskItem[];

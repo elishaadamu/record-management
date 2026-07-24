@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@theme {
+  --color-slate-50: var(--slate-50);
+  --color-slate-100: var(--slate-100);
+  --color-slate-200: var(--slate-200);
+  --color-slate-300: var(--slate-300);
+  --color-slate-400: var(--slate-400);
+  --color-slate-500: var(--slate-500);
+  --color-slate-600: var(--slate-600);
+  --color-slate-700: var(--slate-700);
+  --color-slate-800: var(--slate-800);
+  --color-slate-900: var(--slate-900);
+  --color-slate-950: var(--slate-950);
+}
+
+:root {
+  /* Default: Light Mode */
+  --slate-50: #0f172a;   /* inverted */
+  --slate-100: #0f172a;  /* slate-900 */
+  --slate-200: #1e293b;  /* slate-800 */
+  --slate-300: #334155;  /* slate-700 */
+  --slate-400: #475569;  /* slate-600 */
+  --slate-500: #64748b;  /* slate-500 */
+  --slate-600: #94a3b8;  /* slate-400 */
+  --slate-700: #cbd5e1;  /* slate-300 */
+  --slate-800: #e2e8f0;  /* slate-200 */
+  --slate-900: #ffffff;  /* white */
+  --slate-950: #f8fafc;  /* slate-50 */
+  
+  --scrollbar-track: rgba(226, 232, 240, 0.6);
+  --scrollbar-thumb: rgba(148, 163, 184, 0.8);
+}
+
+.dark {
+  /* Dark Mode */
+  --slate-50: #f8fafc;
+  --slate-100: #f8fafc;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
+  --slate-950: #020617;
+  
+  --scrollbar-track: rgba(15, 23, 42, 0.6);
+  --scrollbar-thumb: rgba(51, 65, 85, 0.8);
+}
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-indigo-500 selection:text-white transition-colors duration-200;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb);
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-1rem) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

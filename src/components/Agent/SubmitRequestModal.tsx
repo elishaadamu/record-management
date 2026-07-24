@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Modal } from '../Common/Modal';
-import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
-import { ApprovalType } from '../../types';
+import { Modal } from '@components/Common/Modal';
+import { useAuth } from '@context/AuthContext';
+import { useData } from '@context/DataContext';
+import { ApprovalType } from '@types';
 
 interface SubmitRequestModalProps {
   isOpen: boolean;

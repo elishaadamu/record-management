@@ -1,5 +1,5 @@
 import React from 'react';
-import { UserRole, TaskPriority, TaskStatus, ApprovalStatus } from '../../types';
+import { UserRole, TaskPriority, TaskStatus, ApprovalStatus } from '@types';
 
 interface RoleBadgeProps {
   role: UserRole;

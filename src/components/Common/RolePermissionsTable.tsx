@@ -1,5 +1,5 @@
 import React from 'react';
-import { SYSTEM_PERMISSIONS } from '../../data/mockData';
+import { SYSTEM_PERMISSIONS } from '@data/mockData';
 import { Check, X, Shield, Users, UserCheck } from 'lucide-react';
 
 export const RolePermissionsTable: React.FC = () => {

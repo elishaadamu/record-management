@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
-import { StatCard } from '../Common/StatCard';
-import { PriorityBadge, StatusBadge, ApprovalBadge } from '../Common/Badge';
+import { useAuth } from '@context/AuthContext';
+import { useData } from '@context/DataContext';
+import { StatCard } from '@components/Common/StatCard';
+import { PriorityBadge, StatusBadge, ApprovalBadge } from '@components/Common/Badge';
 import { SubmitRequestModal } from './SubmitRequestModal';
 import {
   UserCheck,
@@ -17,7 +17,7 @@ import {
   Send,
   MessageSquare
 } from 'lucide-react';
-import { TaskStatus } from '../../types';
+import { TaskStatus } from '@types';
 
 export const AgentDashboard: React.FC = () => {
   const { currentUser, users } = useAuth();

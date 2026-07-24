@@ -1,4 +1,4 @@
-import { User, Permission, TaskItem, ApprovalRequest, AuditLog, AppNotification, SystemSettings } from '../types';
+import { User, Permission, TaskItem, ApprovalRequest, AuditLog, AppNotification, SystemSettings } from '@types';
 
 export const INITIAL_USERS: User[] = [
   {

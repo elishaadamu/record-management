@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
-import { RoleBadge } from '../Common/Badge';
+import { useAuth } from '@context/AuthContext';
+import { useData } from '@context/DataContext';
+import { RoleBadge } from '@components/Common/Badge';
+import { useRouter } from 'next/navigation';
 import {
   Shield,
   Bell,
@@ -10,15 +11,35 @@ import {
   UserCheck,
   Users,
   CheckCheck,
-  Check
+  Check,
+  Sun,
+  Moon
 } from 'lucide-react';
-import { UserRole } from '../../types';
+import { UserRole } from '@types';
 
 export const Navbar: React.FC = () => {
   const { currentUser, logout, loginAsRole } = useAuth();
+  const router = useRouter();
   const { notifications, markNotificationRead, clearNotifications } = useData();
   const [showNotifs, setShowNotifs] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  React.useEffect(() => {
+    const saved = (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
+    setTheme(saved);
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    localStorage.setItem('theme', nextTheme);
+    if (nextTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
 
   if (!currentUser) return null;
 
@@ -33,15 +54,15 @@ export const Navbar: React.FC = () => {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         {/* Brand */}
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/20">
-            <Shield className="h-5 w-5" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl overflow-hidden bg-slate-800 shadow-lg border border-slate-700/50">
+            <img src="/logo.jpg" alt="MK360 Logo" className="h-full w-full object-cover" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-base font-bold tracking-tight text-white">Operations Hub</span>
+              <span className="text-base font-bold tracking-tight text-white">MK360</span>
               <RoleBadge role={currentUser.role} size="sm" />
             </div>
-            <p className="text-xs text-slate-400 hidden sm:block">Multi-Role Portal System</p>
+            <p className="text-xs text-slate-400 hidden sm:block">Portal System</p>
           </div>
         </div>
 
@@ -49,7 +70,7 @@ export const Navbar: React.FC = () => {
         <div className="hidden lg:flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900/90 p-1 text-xs">
           <span className="px-2 font-medium text-slate-400">Quick Switch Role:</span>
           <button
-            onClick={() => loginAsRole('admin')}
+            onClick={() => { loginAsRole('admin'); router.push('/admin'); }}
             className={`px-2.5 py-1 rounded font-semibold transition-all ${
               currentUser.role === 'admin'
                 ? 'bg-purple-900/80 text-purple-200 border border-purple-700/60 shadow-sm'
@@ -59,7 +80,7 @@ export const Navbar: React.FC = () => {
             Admin
           </button>
           <button
-            onClick={() => loginAsRole('manager')}
+            onClick={() => { loginAsRole('manager'); router.push('/manager'); }}
             className={`px-2.5 py-1 rounded font-semibold transition-all ${
               currentUser.role === 'manager'
                 ? 'bg-blue-900/80 text-blue-200 border border-blue-700/60 shadow-sm'
@@ -69,7 +90,7 @@ export const Navbar: React.FC = () => {
             Manager
           </button>
           <button
-            onClick={() => loginAsRole('agent')}
+            onClick={() => { loginAsRole('agent'); router.push('/agent'); }}
             className={`px-2.5 py-1 rounded font-semibold transition-all ${
               currentUser.role === 'agent'
                 ? 'bg-emerald-900/80 text-emerald-200 border border-emerald-700/60 shadow-sm'
@@ -140,6 +161,15 @@ export const Navbar: React.FC = () => {
             )}
           </div>
 
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className="rounded-lg border border-slate-800 bg-slate-900/80 p-2 text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+            title="Toggle theme"
+          >
+            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </button>
+
           {/* Profile Dropdown */}
           <div className="relative">
             <button
@@ -176,6 +206,7 @@ export const Navbar: React.FC = () => {
                       key={r}
                       onClick={() => {
                         loginAsRole(r);
+                        router.push(`/${r}`);
                         setShowProfileMenu(false);
                       }}
                       className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left capitalize ${
@@ -192,7 +223,7 @@ export const Navbar: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={logout}
+                  onClick={() => { logout(); router.push('/login'); }}
                   className="mt-1 w-full flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-950/40 transition-colors"
                 >
                   <LogOut className="h-4 w-4" /> Sign Out

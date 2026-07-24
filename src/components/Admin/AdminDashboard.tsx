@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
-import { StatCard } from '../Common/StatCard';
-import { RoleBadge } from '../Common/Badge';
+import { useAuth } from '@context/AuthContext';
+import { useData } from '@context/DataContext';
+import { StatCard } from '@components/Common/StatCard';
+import { RoleBadge } from '@components/Common/Badge';
 import { UserManagementModal } from './UserManagementModal';
-import { RolePermissionsTable } from '../Common/RolePermissionsTable';
+import { RolePermissionsTable } from '@components/Common/RolePermissionsTable';
 import {
   Users,
   Shield,
@@ -21,7 +21,7 @@ import {
   AlertTriangle,
   FileText
 } from 'lucide-react';
-import { User, UserRole } from '../../types';
+import { User, UserRole } from '@types';
 
 export const AdminDashboard: React.FC = () => {
   const { users, currentUser, deleteUser } = useAuth();

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Modal } from '../Common/Modal';
-import { User, UserRole } from '../../types';
-import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
+import { Modal } from '@components/Common/Modal';
+import { User, UserRole } from '@types';
+import { useAuth } from '@context/AuthContext';
+import { useData } from '@context/DataContext';
 
 interface UserManagementModalProps {
   isOpen: boolean;

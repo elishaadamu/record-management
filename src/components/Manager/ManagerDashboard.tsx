@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useData } from '../../context/DataContext';
-import { StatCard } from '../Common/StatCard';
-import { RoleBadge, PriorityBadge, StatusBadge, ApprovalBadge } from '../Common/Badge';
+import { useAuth } from '@context/AuthContext';
+import { useData } from '@context/DataContext';
+import { StatCard } from '@components/Common/StatCard';
+import { RoleBadge, PriorityBadge, StatusBadge, ApprovalBadge } from '@components/Common/Badge';
 import { AssignTaskModal } from './AssignTaskModal';
 import {
   Users,
@@ -20,7 +20,7 @@ import {
   Trash2,
   Calendar
 } from 'lucide-react';
-import { TaskStatus, ApprovalStatus } from '../../types';
+import { TaskStatus, ApprovalStatus } from '@types';
 
 export const ManagerDashboard: React.FC = () => {
   const { users, currentUser } = useAuth();
