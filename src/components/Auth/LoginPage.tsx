@@ -12,7 +12,7 @@ export const LoginPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleCustomLogin = (e: React.FormEvent) => {
+  const handleCustomLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
       showToast('Please enter your email address.', 'error');
@@ -20,13 +20,16 @@ export const LoginPage: React.FC = () => {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      const result = login(email, password);
+    try {
+      const result = await login(email, password);
       setIsLoading(false);
       if (!result.success && result.message) {
         showToast(result.message, 'error');
       }
-    }, 400);
+    } catch (err: any) {
+      setIsLoading(false);
+      showToast(err?.message || 'Login failed', 'error');
+    }
   };
 
   return (

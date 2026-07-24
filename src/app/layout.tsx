@@ -6,6 +6,9 @@ import { AppLayout } from '@components/Layout/AppLayout';
 export const metadata: Metadata = {
   title: 'MK360',
   description: 'MK360 Portal',
+  icons: {
+    icon: '/logo.jpg',
+  },
 };
 
 export default function RootLayout({

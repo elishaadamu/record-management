@@ -7,6 +7,7 @@ import {
   INITIAL_NOTIFICATIONS,
   INITIAL_SETTINGS
 } from '@data/mockData';
+import { encryptData, decryptData } from '@/lib/encryption';
 
 interface DataContextType {
   tasks: TaskItem[];
@@ -38,7 +39,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [tasks, setTasks] = useState<TaskItem[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_TASKS);
-      return saved ? JSON.parse(saved) : INITIAL_TASKS;
+      const decrypted = decryptData(saved);
+      return decrypted ? decrypted : INITIAL_TASKS;
     } catch {
       return INITIAL_TASKS;
     }
@@ -47,7 +49,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [approvals, setApprovals] = useState<ApprovalRequest[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_APPROVALS);
-      return saved ? JSON.parse(saved) : INITIAL_APPROVALS;
+      const decrypted = decryptData(saved);
+      return decrypted ? decrypted : INITIAL_APPROVALS;
     } catch {
       return INITIAL_APPROVALS;
     }
@@ -56,7 +59,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_AUDIT);
-      return saved ? JSON.parse(saved) : INITIAL_AUDIT_LOGS;
+      const decrypted = decryptData(saved);
+      return decrypted ? decrypted : INITIAL_AUDIT_LOGS;
     } catch {
       return INITIAL_AUDIT_LOGS;
     }
@@ -65,7 +69,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_NOTIFS);
-      return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
+      const decrypted = decryptData(saved);
+      return decrypted ? decrypted : INITIAL_NOTIFICATIONS;
     } catch {
       return INITIAL_NOTIFICATIONS;
     }
@@ -74,30 +79,31 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [settings, setSettings] = useState<SystemSettings>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_SETTINGS);
-      return saved ? JSON.parse(saved) : INITIAL_SETTINGS;
+      const decrypted = decryptData(saved);
+      return decrypted ? decrypted : INITIAL_SETTINGS;
     } catch {
       return INITIAL_SETTINGS;
     }
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(tasks));
+    localStorage.setItem(STORAGE_KEY_TASKS, encryptData(tasks));
   }, [tasks]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_APPROVALS, JSON.stringify(approvals));
+    localStorage.setItem(STORAGE_KEY_APPROVALS, encryptData(approvals));
   }, [approvals]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_AUDIT, JSON.stringify(auditLogs));
+    localStorage.setItem(STORAGE_KEY_AUDIT, encryptData(auditLogs));
   }, [auditLogs]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_NOTIFS, JSON.stringify(notifications));
+    localStorage.setItem(STORAGE_KEY_NOTIFS, encryptData(notifications));
   }, [notifications]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
+    localStorage.setItem(STORAGE_KEY_SETTINGS, encryptData(settings));
   }, [settings]);
 
   const addAuditLog = (
