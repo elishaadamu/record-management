@@ -80,7 +80,7 @@ export const ManagerDashboard: React.FC = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsAssignModalOpen(true)}
-            className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-blue-600/30 transition-all"
+            className="flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2.5 text-xs font-bold text-pure-white shadow-lg shadow-blue-600/30 transition-all"
           >
             <Plus className="h-4 w-4" /> Dispatch New Task
           </button>
@@ -266,7 +266,7 @@ export const ManagerDashboard: React.FC = () => {
 
               <button
                 onClick={() => setIsAssignModalOpen(true)}
-                className="rounded-xl bg-blue-600 hover:bg-blue-500 px-3 py-2 text-xs font-bold text-white shadow"
+                className="rounded-xl bg-blue-600 hover:bg-blue-500 px-3 py-2 text-xs font-bold text-pure-white shadow"
               >
                 + Dispatch Task
               </button>
@@ -395,7 +395,7 @@ export const ManagerDashboard: React.FC = () => {
                         </button>
                         <button
                           onClick={() => handleApprovalResponse(req.id, 'approved')}
-                          className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-bold text-white shadow-md transition-colors"
+                          className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-bold text-pure-white shadow-md transition-colors"
                         >
                           <CheckCircle className="h-4 w-4" /> Authorize & Approve
                         </button>

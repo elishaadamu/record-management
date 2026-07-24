@@ -109,7 +109,7 @@ export const LoginPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 hover:bg-indigo-500 transition-all flex items-center justify-center gap-2 mt-2"
+            className="w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-pure-white shadow-lg shadow-indigo-600/25 hover:bg-indigo-500 transition-all flex items-center justify-center gap-2 mt-2"
           >
             {isLoading ? (
               <span>Authenticating...</span>

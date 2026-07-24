@@ -101,7 +101,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={handleOpenAddModal}
-            className="flex items-center gap-2 rounded-xl bg-purple-600 hover:bg-purple-500 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-purple-600/30 transition-all"
+            className="flex items-center gap-2 rounded-xl bg-purple-600 hover:bg-purple-500 px-4 py-2.5 text-xs font-bold text-pure-white shadow-lg shadow-purple-600/30 transition-all"
           >
             <UserPlus className="h-4 w-4" /> Provision New User
           </button>
@@ -219,7 +219,7 @@ export const AdminDashboard: React.FC = () => {
 
               <button
                 onClick={handleOpenAddModal}
-                className="ml-2 rounded-xl bg-purple-600 hover:bg-purple-500 px-3 py-2 text-xs font-bold text-white shadow"
+                className="ml-2 rounded-xl bg-purple-600 hover:bg-purple-500 px-3 py-2 text-xs font-bold text-pure-white shadow"
               >
                 + Add User
               </button>

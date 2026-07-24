@@ -4,29 +4,24 @@ import { useData } from '@context/DataContext';
 import { RoleBadge } from '@components/Common/Badge';
 import { useRouter } from 'next/navigation';
 import {
-  Shield,
   Bell,
   LogOut,
   ChevronDown,
-  UserCheck,
-  Users,
   CheckCheck,
-  Check,
   Sun,
   Moon
 } from 'lucide-react';
-import { UserRole } from '@types';
 
 export const Navbar: React.FC = () => {
-  const { currentUser, logout, loginAsRole } = useAuth();
+  const { currentUser, logout } = useAuth();
   const router = useRouter();
   const { notifications, markNotificationRead, clearNotifications } = useData();
   const [showNotifs, setShowNotifs] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
   React.useEffect(() => {
-    const saved = (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
+    const saved = (localStorage.getItem('theme') as 'light' | 'dark') || 'dark';
     setTheme(saved);
   }, []);
 
@@ -66,41 +61,6 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Role Switcher (Visible to easily test Admin/Manager/Agent view) */}
-        <div className="hidden lg:flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900/90 p-1 text-xs">
-          <span className="px-2 font-medium text-slate-400">Quick Switch Role:</span>
-          <button
-            onClick={() => { loginAsRole('admin'); router.push('/admin'); }}
-            className={`px-2.5 py-1 rounded font-semibold transition-all ${
-              currentUser.role === 'admin'
-                ? 'bg-purple-900/80 text-purple-200 border border-purple-700/60 shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            Admin
-          </button>
-          <button
-            onClick={() => { loginAsRole('manager'); router.push('/manager'); }}
-            className={`px-2.5 py-1 rounded font-semibold transition-all ${
-              currentUser.role === 'manager'
-                ? 'bg-blue-900/80 text-blue-200 border border-blue-700/60 shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            Manager
-          </button>
-          <button
-            onClick={() => { loginAsRole('agent'); router.push('/agent'); }}
-            className={`px-2.5 py-1 rounded font-semibold transition-all ${
-              currentUser.role === 'agent'
-                ? 'bg-emerald-900/80 text-emerald-200 border border-emerald-700/60 shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
-            }`}
-          >
-            Agent
-          </button>
-        </div>
-
         {/* Right Actions */}
         <div className="flex items-center gap-3">
           {/* Notifications Dropdown */}
@@ -112,7 +72,7 @@ export const Navbar: React.FC = () => {
             >
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white ring-2 ring-slate-950">
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-pure-white ring-2 ring-slate-950">
                   {unreadCount}
                 </span>
               )}
@@ -198,29 +158,7 @@ export const Navbar: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Mobile Quick Role Switcher inside menu */}
-                <div className="lg:hidden p-2 border-b border-slate-800 space-y-1">
-                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-2">Switch Role</p>
-                  {(['admin', 'manager', 'agent'] as UserRole[]).map(r => (
-                    <button
-                      key={r}
-                      onClick={() => {
-                        loginAsRole(r);
-                        router.push(`/${r}`);
-                        setShowProfileMenu(false);
-                      }}
-                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left capitalize ${
-                        currentUser.role === r ? 'bg-indigo-950/80 text-indigo-300 font-bold' : 'text-slate-300 hover:bg-slate-800'
-                      }`}
-                    >
-                      {r === 'admin' && <Shield className="h-3.5 w-3.5 text-purple-400" />}
-                      {r === 'manager' && <Users className="h-3.5 w-3.5 text-blue-400" />}
-                      {r === 'agent' && <UserCheck className="h-3.5 w-3.5 text-emerald-400" />}
-                      <span>Switch to {r}</span>
-                      {currentUser.role === r && <Check className="h-3.5 w-3.5 ml-auto" />}
-                    </button>
-                  ))}
-                </div>
+                {/* Mobile quick role switcher removed for distinct user sessions */}
 
                 <button
                   onClick={() => { logout(); router.push('/login'); }}

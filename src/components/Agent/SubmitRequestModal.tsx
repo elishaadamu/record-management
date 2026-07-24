@@ -112,7 +112,7 @@ export const SubmitRequestModal: React.FC<SubmitRequestModalProps> = ({ isOpen, 
           </button>
           <button
             type="submit"
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 shadow-md"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-pure-white hover:bg-emerald-500 shadow-md"
           >
             Submit for Review
           </button>

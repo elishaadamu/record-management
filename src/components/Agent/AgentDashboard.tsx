@@ -80,7 +80,7 @@ export const AgentDashboard: React.FC = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsRequestModalOpen(true)}
-            className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-600/30 transition-all"
+            className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 text-xs font-bold text-pure-white shadow-lg shadow-emerald-600/30 transition-all"
           >
             <FilePlus className="h-4 w-4" /> Submit Request / Claim
           </button>
@@ -300,7 +300,7 @@ export const AgentDashboard: React.FC = () => {
 
             <button
               onClick={() => setIsRequestModalOpen(true)}
-              className="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3 py-2 text-xs font-bold text-white shadow"
+              className="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3 py-2 text-xs font-bold text-pure-white shadow"
             >
               + Submit New Claim
             </button>

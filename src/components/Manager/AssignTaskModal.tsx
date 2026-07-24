@@ -165,7 +165,7 @@ export const AssignTaskModal: React.FC<AssignTaskModalProps> = ({ isOpen, onClos
           </button>
           <button
             type="submit"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-500 shadow-md"
+            className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-pure-white hover:bg-blue-500 shadow-md"
           >
             Dispatch Task
           </button>
