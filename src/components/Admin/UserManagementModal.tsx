@@ -3,6 +3,7 @@ import { Modal } from '@components/Common/Modal';
 import { User, UserRole } from '@types';
 import { useAuth } from '@context/AuthContext';
 import { useData } from '@context/DataContext';
+import { adminService } from '@/services/adminService';
 
 interface UserManagementModalProps {
   isOpen: boolean;
@@ -79,6 +80,21 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
         );
       }
     } else {
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0] || name;
+      const lastName = nameParts.slice(1).join(' ') || 'Manager';
+
+      if (role === 'manager') {
+        adminService.createManager({
+          firstName,
+          lastName,
+          email,
+          phone: phone || '07000000000',
+          password: 'Password123!',
+          role: 'manager'
+        }).catch(() => {});
+      }
+
       const created = addUser({
         name,
         email,

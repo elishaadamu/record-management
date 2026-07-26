@@ -80,7 +80,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const saved = localStorage.getItem(STORAGE_KEY_SETTINGS);
       const decrypted = decryptData(saved);
-      return decrypted ? decrypted : INITIAL_SETTINGS;
+      if (decrypted) {
+        return { ...decrypted, broadcastBannerMessage: '' };
+      }
+      return INITIAL_SETTINGS;
     } catch {
       return INITIAL_SETTINGS;
     }

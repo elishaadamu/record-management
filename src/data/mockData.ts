@@ -1,82 +1,6 @@
 import { User, Permission, TaskItem, ApprovalRequest, AuditLog, AppNotification, SystemSettings } from '@types';
 
-export const INITIAL_USERS: User[] = [
-  {
-    id: 'u-101',
-    name: 'Sarah Connor',
-    email: 'admin@ops.com',
-    role: 'admin',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-    department: 'Executive Operations',
-    status: 'active',
-    title: 'Chief Operations Administrator',
-    lastLogin: '2026-07-23 12:15 PM',
-    phone: '+1 (555) 019-2834'
-  },
-  {
-    id: 'u-102',
-    name: 'David Miller',
-    email: 'manager@ops.com',
-    role: 'manager',
-    avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
-    department: 'Regional Operations & Support',
-    status: 'active',
-    title: 'Senior Operations Manager',
-    lastLogin: '2026-07-23 11:40 AM',
-    phone: '+1 (555) 014-8890'
-  },
-  {
-    id: 'u-103',
-    name: 'Alex Rivera',
-    email: 'agent@ops.com',
-    role: 'agent',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    department: 'Client Services & Sales',
-    status: 'active',
-    title: 'Senior Support & Field Agent',
-    lastLogin: '2026-07-23 12:02 PM',
-    phone: '+1 (555) 012-4411',
-    assignedManagerId: 'u-102'
-  },
-  {
-    id: 'u-104',
-    name: 'Elena Rostova',
-    email: 'elena.r@ops.com',
-    role: 'manager',
-    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
-    department: 'Technical Logistics',
-    status: 'active',
-    title: 'Logistics Manager',
-    lastLogin: '2026-07-23 09:15 AM',
-    phone: '+1 (555) 017-9921'
-  },
-  {
-    id: 'u-105',
-    name: 'Marcus Vance',
-    email: 'marcus.v@ops.com',
-    role: 'agent',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    department: 'Client Services & Sales',
-    status: 'active',
-    title: 'Support Specialist',
-    lastLogin: '2026-07-23 10:30 AM',
-    phone: '+1 (555) 018-3322',
-    assignedManagerId: 'u-102'
-  },
-  {
-    id: 'u-106',
-    name: 'Chloe Bennett',
-    email: 'chloe.b@ops.com',
-    role: 'agent',
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
-    department: 'Technical Logistics',
-    status: 'active',
-    title: 'Field Logistics Agent',
-    lastLogin: '2026-07-22 04:50 PM',
-    phone: '+1 (555) 011-7788',
-    assignedManagerId: 'u-104'
-  }
-];
+export const INITIAL_USERS: User[] = [];
 
 export const SYSTEM_PERMISSIONS: Permission[] = [
   {
@@ -373,5 +297,5 @@ export const INITIAL_SETTINGS: SystemSettings = {
   sessionTimeoutMinutes: 30,
   requireMFA: false,
   allowAgentTaskSelfAssign: true,
-  broadcastBannerMessage: 'System Maintenance Scheduled for Saturday 02:00 AM UTC. No downtime anticipated.'
+  broadcastBannerMessage: ''
 };

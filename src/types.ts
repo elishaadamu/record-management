@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'manager' | 'agent';
+export type UserRole = 'admin' | 'manager' | 'agent' | 'user';
 
 export interface User {
   id: string;
@@ -22,6 +22,7 @@ export interface Permission {
   admin: boolean;
   manager: boolean;
   agent: boolean;
+  user?: boolean;
 }
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';

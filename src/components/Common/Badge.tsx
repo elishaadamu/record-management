@@ -31,16 +31,22 @@ export const RoleBadge: React.FC<RoleBadgeProps> = ({ role, size = 'md' }) => {
       text: 'text-emerald-300',
       border: 'border-emerald-700/60',
       label: 'Agent'
+    },
+    user: {
+      bg: 'bg-slate-950/80',
+      text: 'text-slate-300',
+      border: 'border-slate-700/60',
+      label: 'User'
     }
   };
 
-  const style = roleStyles[role];
+  const style = roleStyles[role] || roleStyles.user;
 
   return (
     <span
       className={`inline-flex items-center rounded-md border ${style.bg} ${style.text} ${style.border} ${sizeClasses[size]} tracking-wide`}
     >
-      <span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${role === 'admin' ? 'bg-purple-400' : role === 'manager' ? 'bg-blue-400' : 'bg-emerald-400'}`} />
+      <span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${role === 'admin' ? 'bg-purple-400' : role === 'manager' ? 'bg-blue-400' : role === 'agent' ? 'bg-emerald-400' : 'bg-slate-400'}`} />
       {style.label}
     </span>
   );

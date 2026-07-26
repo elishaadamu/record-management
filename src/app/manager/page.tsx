@@ -1,5 +1,11 @@
 "use client";
-import { ManagerDashboard } from '@components/Manager/ManagerDashboard';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
 export default function ManagerPage() {
-  return <ManagerDashboard />;
+  const router = useRouter();
+  useEffect(() => {
+    router.replace('/manager/er');
+  }, [router]);
+  return null;
 }

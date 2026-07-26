@@ -14,43 +14,36 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const router = useRouter();
   const pathname = usePathname();
 
+  const isPublicRoute = pathname === '/login' || pathname === '/register';
+
   useEffect(() => {
-    if (!currentUser && pathname !== '/login') {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('ops_portal_token') : null;
+    if (!isPublicRoute && (!currentUser || !token)) {
       router.push('/login');
-    } else if (currentUser && pathname === '/login') {
+    } else if (currentUser && token && isPublicRoute) {
       router.push(`/${currentUser.role}`);
     }
-  }, [currentUser, pathname, router]);
+  }, [currentUser, pathname, router, isPublicRoute]);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    if (savedTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.remove('dark');
   }, [pathname]);
 
-  if (!currentUser && pathname !== '/login') {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('ops_portal_token') : null;
+  if (!isPublicRoute && (!currentUser || !token)) {
     return null; // Avoid flashing protected content before redirect
   }
 
-  // If on login page, don't show navbar and footer
-  if (pathname === '/login') {
+  const isBypassedRoute = pathname?.startsWith('/admin') || pathname?.startsWith('/manager') || pathname?.startsWith('/agent');
+
+  // If on public pages or role-based sub-routes, bypass global Navbar/Footer chrome
+  if (isPublicRoute || isBypassedRoute) {
     return <>{children}</>;
   }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       <Navbar />
-
-      {/* Broadcast Banner if configured */}
-      {settings.broadcastBannerMessage && (
-        <div className="bg-gradient-to-r from-amber-950 via-purple-950 to-indigo-950 border-b border-amber-800/50 py-2 px-4 text-xs text-amber-200 flex items-center justify-center gap-2">
-          <AlertCircle className="h-4 w-4 text-amber-400 shrink-0" />
-          <span className="font-semibold">{settings.broadcastBannerMessage}</span>
-        </div>
-      )}
 
       {/* Main Dashboard Area */}
       <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 py-6">

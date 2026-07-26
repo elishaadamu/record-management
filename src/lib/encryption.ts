@@ -29,7 +29,6 @@ export const decryptData = (ciphertext: string | null): any => {
       return decryptedText;
     }
   } catch (error) {
-    console.error('Decryption failed:', error);
     return null;
   }
 };
