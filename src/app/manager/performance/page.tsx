@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useToast } from '@context/ToastContext';
+import { useAuth } from '@context/AuthContext';
 import { managerService } from '@/services/managerService';
 import { Modal } from '@components/Common/Modal';
 import {
@@ -18,10 +19,12 @@ import {
 
 export default function ManagerPerformancePage() {
   const { showToast } = useToast();
+  const { currentUser } = useAuth();
 
   const [agentsList, setAgentsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Agent Creation form state
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
@@ -31,13 +34,15 @@ export default function ManagerPerformancePage() {
     email: '',
     phone: '',
     password: '',
-    role: 'agent'
+    role: 'agent',
+    managerId: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchPerformance = async () => {
     setIsLoading(true);
+    setCurrentPage(1);
     try {
       const res = await managerService.getAgentsPerformance();
       let list = res?.data || res?.agents || res;
@@ -69,9 +74,13 @@ export default function ManagerPerformancePage() {
     }
 
     setIsSubmitting(true);
-    console.log('Registering Agent Payload:', agentForm);
+    const payload = {
+      ...agentForm,
+      managerId: agentForm.managerId || currentUser?.id || ''
+    };
+    console.log('Registering Agent Payload:', payload);
     try {
-      const response = await managerService.registerAgent(agentForm);
+      const response = await managerService.registerAgent(payload);
       console.log('Registering Agent Response:', response);
       showToast(`Agent "${agentForm.firstName} ${agentForm.lastName}" registered successfully!`, 'success');
       setAgentForm({
@@ -80,7 +89,8 @@ export default function ManagerPerformancePage() {
         email: '',
         phone: '',
         password: '',
-        role: 'agent'
+        role: 'agent',
+        managerId: ''
       });
       setIsRegisterOpen(false);
       fetchPerformance();
@@ -176,7 +186,7 @@ export default function ManagerPerformancePage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredAgents.map((agent: any, idx: number) => {
+                  filteredAgents.slice((currentPage - 1) * 10, currentPage * 10).map((agent: any, idx: number) => {
                     const name = agent.firstName ? `${agent.firstName} ${agent.lastName || ''}`.trim() : agent.name || agent.email;
                     const performanceScore = agent.performanceScore ?? agent.score ?? 100;
                     return (
@@ -198,6 +208,30 @@ export default function ManagerPerformancePage() {
               </tbody>
             </table>
           </div>
+
+          {filteredAgents.length > 10 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-800 bg-slate-950/40 text-[11px]">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                className="px-3 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-semibold cursor-pointer"
+              >
+                Previous
+              </button>
+              <span className="text-slate-400">
+                Page <span className="font-bold text-white">{currentPage}</span> of <span className="font-bold text-white">{Math.ceil(filteredAgents.length / 10)}</span>
+              </span>
+              <button
+                type="button"
+                disabled={currentPage === Math.ceil(filteredAgents.length / 10)}
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredAgents.length / 10)))}
+                className="px-3 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-semibold cursor-pointer"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -268,6 +302,18 @@ export default function ManagerPerformancePage() {
                 </button>
               </div>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Manager ID</label>
+            <input
+              type="text"
+              placeholder={currentUser?.id || "e.g. u-102"}
+              value={agentForm.managerId}
+              onChange={e => setAgentForm(prev => ({ ...prev, managerId: e.target.value }))}
+              className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+            />
+            <p className="text-[10px] text-slate-500 mt-1">Defaults to your manager ID ({currentUser?.id || 'current manager'}) if left blank.</p>
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">

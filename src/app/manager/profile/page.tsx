@@ -37,17 +37,9 @@ export default function ManagerProfilePage() {
         {/* Left Side: Avatar Card */}
         <div className="md:col-span-1 rounded-xl border border-slate-800 bg-slate-900 p-5 shadow-md flex flex-col items-center justify-center text-center">
           <div className="relative">
-            {currentUser.avatar ? (
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.name}
-                className="h-24 w-24 rounded-full border-2 border-indigo-500/50 object-cover shadow-lg"
-              />
-            ) : (
-              <div className="h-24 w-24 rounded-full bg-indigo-600/20 border-2 border-indigo-500/40 flex items-center justify-center text-indigo-300 font-extrabold text-2xl shadow-lg">
-                {initial.toUpperCase()}
-              </div>
-            )}
+            <div className="h-24 w-24 rounded-full bg-indigo-600/20 border-2 border-indigo-500/40 flex items-center justify-center text-indigo-300 font-extrabold text-2xl shadow-lg">
+              {initial.toUpperCase()}
+            </div>
             <span className="absolute bottom-0 right-0 h-5 w-5 bg-emerald-500 border-2 border-slate-900 rounded-full" />
           </div>
 

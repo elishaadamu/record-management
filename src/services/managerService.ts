@@ -7,6 +7,7 @@ export interface RegisterAgentPayload {
   phone: string;
   password?: string;
   role: string;
+  managerId?: string;
   [key: string]: any;
 }
 

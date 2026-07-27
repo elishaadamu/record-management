@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@context/AuthContext';
 import { useToast } from '@context/ToastContext';
 import { Modal } from '@components/Common/Modal';
@@ -22,6 +23,7 @@ import {
   Calendar,
   Phone,
   Mail,
+  ArrowRight,
   User as UserIcon
 } from 'lucide-react';
 
@@ -88,9 +90,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
   });
   const [isSubmittingAssign, setIsSubmittingAssign] = useState(false);
 
+  // Pagination states (10 per page)
+  const [erUsersPage, setErUsersPage] = useState(1);
+  const [managersPage, setManagersPage] = useState(1);
+  const [withdrawalsPage, setWithdrawalsPage] = useState(1);
+  const [propertiesPage, setPropertiesPage] = useState(1);
+
   // Data Fetchers
   const fetchErStats = async () => {
     setIsLoadingEr(true);
+    setErUsersPage(1);
     try {
       const [totalRes, weeklyRes, monthlyRes] = await Promise.allSettled([
         adminService.getErTotal(),
@@ -118,6 +127,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
 
   const fetchManagers = async () => {
     setIsLoadingManagers(true);
+    setManagersPage(1);
     try {
       const res = await adminService.getManagers();
       const list = res?.data || res?.managers || (Array.isArray(res) ? res : []);
@@ -131,6 +141,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
 
   const fetchPendingWithdrawals = async () => {
     setIsLoadingWithdrawals(true);
+    setWithdrawalsPage(1);
     try {
       const res = await adminService.getPendingWithdrawals();
       const list = res?.data || res?.withdrawals || (Array.isArray(res) ? res : []);
@@ -144,6 +155,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
 
   const fetchProperties = async () => {
     setIsLoadingProperties(true);
+    setPropertiesPage(1);
     try {
       const res = await adminService.getProperties();
       const list = res?.data || res?.properties || (Array.isArray(res) ? res : []);
@@ -278,6 +290,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
     if (typeof obj === 'number') return obj;
     if (!obj) return 0;
     return obj.totalER ?? obj.weeklyER ?? obj.monthlyER ?? obj.total ?? obj.count ?? obj.value ?? 0;
+  };
+
+  const getUserName = (w: any) => {
+    if (!w) return 'N/A';
+    if (typeof w.userName === 'string' && w.userName) return w.userName;
+    const userObj = w.userId || w.user;
+    if (userObj && typeof userObj === 'object') {
+      if (userObj.firstName || userObj.lastName) {
+        return `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim();
+      }
+      return userObj.email || userObj.name || 'N/A';
+    }
+    if (typeof w.email === 'string' && w.email) return w.email;
+    if (typeof w.userId === 'string') return w.userId;
+    return 'N/A';
   };
 
   return (
@@ -444,7 +471,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                       </td>
                     </tr>
                   ) : (
-                    erTotal.users.map((usr: any, i: number) => {
+                    erTotal.users.slice((erUsersPage - 1) * 10, erUsersPage * 10).map((usr: any, i: number) => {
                       const name = usr.firstName ? `${usr.firstName} ${usr.lastName || ''}`.trim() : usr.name || usr.email;
                       return (
                         <tr key={usr._id || usr.id || i} className="hover:bg-slate-800/30">
@@ -463,6 +490,198 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {erTotal?.users && erTotal.users.length > 10 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-slate-850 bg-slate-950/40 text-[11px]">
+                <button
+                  type="button"
+                  disabled={erUsersPage === 1}
+                  onClick={() => setErUsersPage(prev => Math.max(prev - 1, 1))}
+                  className="px-3 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-semibold cursor-pointer"
+                >
+                  Previous
+                </button>
+                <span className="text-slate-400">
+                  Page <span className="font-bold text-white">{erUsersPage}</span> of <span className="font-bold text-white">{Math.ceil(erTotal.users.length / 10)}</span>
+                </span>
+                <button
+                  type="button"
+                  disabled={erUsersPage === Math.ceil(erTotal.users.length / 10)}
+                  onClick={() => setErUsersPage(prev => Math.min(prev + 1, Math.ceil(erTotal.users.length / 10)))}
+                  className="px-3 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-semibold cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Portal Navigation */}
+          <div className="space-y-3 pt-2">
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider">Quick Portal Navigation</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <button
+                type="button"
+                onClick={() => { setActiveTab('managers'); window.scrollTo(0, 0); }}
+                className="p-3.5 rounded-xl border border-slate-800 bg-slate-900 hover:bg-slate-850 transition-all flex flex-col justify-between text-left h-24 group cursor-pointer"
+              >
+                <Users className="h-5 w-5 text-indigo-400 group-hover:scale-110 transition-transform" />
+                <div className="flex items-center justify-between w-full mt-auto">
+                  <span className="text-[11px] font-bold text-slate-200">Managers Directory</span>
+                  <ArrowRight className="h-3.5 w-3.5 text-slate-500 group-hover:text-white" />
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab('wallet'); window.scrollTo(0, 0); }}
+                className="p-3.5 rounded-xl border border-slate-800 bg-slate-900 hover:bg-slate-850 transition-all flex flex-col justify-between text-left h-24 group cursor-pointer"
+              >
+                <Wallet className="h-5 w-5 text-indigo-400 group-hover:scale-110 transition-transform" />
+                <div className="flex items-center justify-between w-full mt-auto">
+                  <span className="text-[11px] font-bold text-slate-200">Wallet Operations</span>
+                  <ArrowRight className="h-3.5 w-3.5 text-slate-500 group-hover:text-white" />
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab('withdrawals'); window.scrollTo(0, 0); }}
+                className="p-3.5 rounded-xl border border-slate-800 bg-slate-900 hover:bg-slate-850 transition-all flex flex-col justify-between text-left h-24 group cursor-pointer"
+              >
+                <Clock className="h-5 w-5 text-indigo-400 group-hover:scale-110 transition-transform" />
+                <div className="flex items-center justify-between w-full mt-auto">
+                  <span className="text-[11px] font-bold text-slate-200">Withdrawals Queue</span>
+                  <ArrowRight className="h-3.5 w-3.5 text-slate-500 group-hover:text-white" />
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab('properties'); window.scrollTo(0, 0); }}
+                className="p-3.5 rounded-xl border border-slate-800 bg-slate-900 hover:bg-slate-850 transition-all flex flex-col justify-between text-left h-24 group cursor-pointer"
+              >
+                <Building className="h-5 w-5 text-indigo-400 group-hover:scale-110 transition-transform" />
+                <div className="flex items-center justify-between w-full mt-auto">
+                  <span className="text-[11px] font-bold text-slate-200">Assign Properties</span>
+                  <ArrowRight className="h-3.5 w-3.5 text-slate-500 group-hover:text-white" />
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Grid of Summarized Tables: Recent Properties & Pending Withdrawals */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            {/* Withdrawals Summary table */}
+            <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-md space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <Clock className="h-4 w-4 text-indigo-400" /> Pending Withdrawals
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('withdrawals'); window.scrollTo(0, 0); }}
+                  className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-0.5 cursor-pointer"
+                >
+                  View All Queue <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+
+              <div className="overflow-x-auto text-xs text-left">
+                <table className="w-full">
+                  <thead className="text-[10px] font-bold text-slate-500 uppercase border-b border-slate-850">
+                    <tr>
+                      <th className="pb-2">User</th>
+                      <th className="pb-2">Amount</th>
+                      <th className="pb-2 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-850 text-slate-200">
+                    {isLoadingWithdrawals ? (
+                      Array.from({ length: 3 }).map((_, i) => (
+                        <tr key={i} className="animate-pulse">
+                          <td className="py-2"><div className="h-3 bg-slate-800 rounded w-1/2"></div></td>
+                          <td className="py-2"><div className="h-3 bg-slate-800 rounded w-1/3"></div></td>
+                          <td className="py-2 text-right"><div className="h-4 bg-slate-800 rounded w-10 ml-auto"></div></td>
+                        </tr>
+                      ))
+                    ) : pendingWithdrawals.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="py-4 text-center text-slate-500">No pending withdrawals.</td>
+                      </tr>
+                    ) : (
+                      pendingWithdrawals.slice(0, 3).map((w: any, idx: number) => (
+                        <tr key={w.id || w._id || idx}>
+                          <td className="py-2 text-slate-300">{getUserName(w)}</td>
+                          <td className="py-2 text-emerald-400 font-bold">₦{w.amount}</td>
+                          <td className="py-2 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleApproveWithdrawal(w.id || w._id)}
+                              disabled={approvingWithdrawalId === (w.id || w._id)}
+                              className="text-[10px] text-emerald-300 bg-emerald-950 border border-emerald-800/60 px-2 py-0.5 rounded font-semibold cursor-pointer"
+                            >
+                              Approve
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Properties Summary table */}
+            <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 shadow-md space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <Building className="h-4 w-4 text-indigo-400" /> Assigned Properties
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab('properties'); window.scrollTo(0, 0); }}
+                  className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-0.5 cursor-pointer"
+                >
+                  View All <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+
+              <div className="overflow-x-auto text-xs text-left">
+                <table className="w-full">
+                  <thead className="text-[10px] font-bold text-slate-500 uppercase border-b border-slate-850">
+                    <tr>
+                      <th className="pb-2">Property Name</th>
+                      <th className="pb-2">Unit</th>
+                      <th className="pb-2 text-right">Agent</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-850 text-slate-200">
+                    {isLoadingProperties ? (
+                      Array.from({ length: 3 }).map((_, i) => (
+                        <tr key={i} className="animate-pulse">
+                          <td className="py-2"><div className="h-3 bg-slate-800 rounded w-2/3"></div></td>
+                          <td className="py-2"><div className="h-3 bg-slate-800 rounded w-1/3"></div></td>
+                          <td className="py-2 text-right"><div className="h-3 bg-slate-800 rounded w-1/3 ml-auto"></div></td>
+                        </tr>
+                      ))
+                    ) : properties.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="py-4 text-center text-slate-500">No properties assigned.</td>
+                      </tr>
+                    ) : (
+                      properties.slice(0, 3).map((p: any, idx: number) => (
+                        <tr key={p.id || p._id || idx}>
+                          <td className="py-2 font-semibold text-white">{p.propertyName || p.name}</td>
+                          <td className="py-2 text-slate-300">{p.propertyNumber || p.number || 'N/A'}</td>
+                          <td className="py-2 text-right text-indigo-300 font-medium">{p.agentName || p.agentId || 'Unassigned'}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -524,7 +743,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                       </td>
                     </tr>
                   ) : (
-                    managers.map((m: any, idx: number) => (
+                    managers.slice((managersPage - 1) * 10, managersPage * 10).map((m: any, idx: number) => (
                       <tr key={m.id || m._id || idx} className="hover:bg-slate-800/40">
                         <td className="py-2.5 px-3 font-mono text-[10px] text-slate-400 select-all break-all">
                           {m._id || m.id || 'N/A'}
@@ -553,6 +772,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                 </tbody>
               </table>
             </div>
+
+            {managers.length > 10 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-slate-805 bg-slate-950/40 text-[11px]">
+                <button
+                  type="button"
+                  disabled={managersPage === 1}
+                  onClick={() => setManagersPage(prev => Math.max(prev - 1, 1))}
+                  className="px-3 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-semibold cursor-pointer"
+                >
+                  Previous
+                </button>
+                <span className="text-slate-400">
+                  Page <span className="font-bold text-white">{managersPage}</span> of <span className="font-bold text-white">{Math.ceil(managers.length / 10)}</span>
+                </span>
+                <button
+                  type="button"
+                  disabled={managersPage === Math.ceil(managers.length / 10)}
+                  onClick={() => setManagersPage(prev => Math.min(prev + 1, Math.ceil(managers.length / 10)))}
+                  className="px-3 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-semibold cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -727,10 +970,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                       </td>
                     </tr>
                   ) : (
-                    pendingWithdrawals.map((w: any, idx: number) => (
+                    pendingWithdrawals.slice((withdrawalsPage - 1) * 10, withdrawalsPage * 10).map((w: any, idx: number) => (
                       <tr key={w.id || w._id || idx} className="hover:bg-slate-800/40">
                         <td className="py-2.5 px-3 font-mono text-[11px] text-white">{w.id || w._id}</td>
-                        <td className="py-2.5 px-3 text-slate-300">{w.userName || w.userId || w.email}</td>
+                        <td className="py-2.5 px-3 text-slate-300">{getUserName(w)}</td>
                         <td className="py-2.5 px-3 text-emerald-400 font-bold">₦{w.amount}</td>
                         <td className="py-2.5 px-3 text-slate-400">{w.createdAt || w.date || 'Pending'}</td>
                         <td className="py-2.5 px-3 text-right">
@@ -749,6 +992,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                 </tbody>
               </table>
             </div>
+
+            {pendingWithdrawals.length > 10 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-slate-800 bg-slate-950/40 text-[11px]">
+                <button
+                  type="button"
+                  disabled={withdrawalsPage === 1}
+                  onClick={() => setWithdrawalsPage(prev => Math.max(prev - 1, 1))}
+                  className="px-3 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-semibold cursor-pointer"
+                >
+                  Previous
+                </button>
+                <span className="text-slate-400">
+                  Page <span className="font-bold text-white">{withdrawalsPage}</span> of <span className="font-bold text-white">{Math.ceil(pendingWithdrawals.length / 10)}</span>
+                </span>
+                <button
+                  type="button"
+                  disabled={withdrawalsPage === Math.ceil(pendingWithdrawals.length / 10)}
+                  onClick={() => setWithdrawalsPage(prev => Math.min(prev + 1, Math.ceil(pendingWithdrawals.length / 10)))}
+                  className="px-3 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-semibold cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -856,7 +1123,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                         </td>
                       </tr>
                     ) : (
-                      properties.map((p: any, idx: number) => (
+                      properties.slice((propertiesPage - 1) * 10, propertiesPage * 10).map((p: any, idx: number) => (
                         <tr key={p.id || p._id || idx} className="hover:bg-slate-800/40">
                           <td className="py-2.5 px-3 font-semibold text-white">{p.propertyName || p.name}</td>
                           <td className="py-2.5 px-3 text-slate-300">{p.propertyNumber || p.number || 'N/A'}</td>
@@ -872,6 +1139,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                   </tbody>
                 </table>
               </div>
+
+              {properties.length > 10 && (
+                <div className="flex items-center justify-between px-4 py-3 border-t border-slate-800 bg-slate-950/40 text-[11px]">
+                  <button
+                    type="button"
+                    disabled={propertiesPage === 1}
+                    onClick={() => setPropertiesPage(prev => Math.max(prev - 1, 1))}
+                    className="px-3 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-semibold cursor-pointer"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-slate-400">
+                    Page <span className="font-bold text-white">{propertiesPage}</span> of <span className="font-bold text-white">{Math.ceil(properties.length / 10)}</span>
+                  </span>
+                  <button
+                    type="button"
+                    disabled={propertiesPage === Math.ceil(properties.length / 10)}
+                    onClick={() => setPropertiesPage(prev => Math.min(prev + 1, Math.ceil(properties.length / 10)))}
+                    className="px-3 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-semibold cursor-pointer"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -67,7 +67,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
         title,
         status,
         phone,
-        assignedManagerId: role === 'agent' ? assignedManagerId : undefined
+        assignedManagerId: role === 'agent' ? assignedManagerId : undefined,
+        managerId: role === 'agent' ? assignedManagerId : undefined
       });
 
       if (currentUser) {
@@ -104,7 +105,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
         status,
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
         phone,
-        assignedManagerId: role === 'agent' ? assignedManagerId : undefined
+        assignedManagerId: role === 'agent' ? assignedManagerId : undefined,
+        managerId: role === 'agent' ? assignedManagerId : undefined
       });
 
       if (currentUser) {

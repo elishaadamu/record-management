@@ -10,9 +10,11 @@ import {
 export default function ManagerPropertiesPage() {
   const [propertiesList, setPropertiesList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchProperties = async () => {
     setIsLoading(true);
+    setCurrentPage(1);
     try {
       const res = await managerService.getAssignedProperties();
       let list = res?.data || res?.properties || res;
@@ -91,7 +93,7 @@ export default function ManagerPropertiesPage() {
                   </td>
                 </tr>
               ) : (
-                propertiesList.map((p: any, idx: number) => (
+                propertiesList.slice((currentPage - 1) * 10, currentPage * 10).map((p: any, idx: number) => (
                   <tr key={p.id || p._id || idx} className="hover:bg-slate-800/40">
                     <td className="py-2.5 px-3 font-semibold text-white">{p.propertyName || p.name}</td>
                     <td className="py-2.5 px-3 text-slate-300">{p.propertyNumber || p.number || 'N/A'}</td>
@@ -107,6 +109,30 @@ export default function ManagerPropertiesPage() {
             </tbody>
           </table>
         </div>
+
+        {propertiesList.length > 10 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-800 bg-slate-950/40 text-[11px]">
+            <button
+              type="button"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              className="px-3 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-semibold cursor-pointer"
+            >
+              Previous
+            </button>
+            <span className="text-slate-400">
+              Page <span className="font-bold text-white">{currentPage}</span> of <span className="font-bold text-white">{Math.ceil(propertiesList.length / 10)}</span>
+            </span>
+            <button
+              type="button"
+              disabled={currentPage === Math.ceil(propertiesList.length / 10)}
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(propertiesList.length / 10)))}
+              className="px-3 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-semibold cursor-pointer"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

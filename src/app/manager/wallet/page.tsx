@@ -21,9 +21,11 @@ export default function ManagerWalletPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [amount, setAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchWallet = async () => {
     setIsLoading(true);
+    setCurrentPage(1);
     try {
       const res = await managerService.getWalletInfo();
       setWalletData(res?.data || res || {});
@@ -161,7 +163,7 @@ export default function ManagerWalletPage() {
                     </td>
                   </tr>
                 ) : (
-                  transactions.map((tx: any, idx: number) => {
+                  transactions.slice((currentPage - 1) * 10, currentPage * 10).map((tx: any, idx: number) => {
                     const isDebit = tx.type === 'debit' || tx.type === 'withdraw' || tx.type === 'withdrawal';
                     const amountSign = isDebit ? '-' : '+';
                     const amountColor = isDebit ? 'text-rose-400' : 'text-emerald-400';
@@ -206,6 +208,30 @@ export default function ManagerWalletPage() {
               </tbody>
             </table>
           </div>
+
+          {transactions.length > 10 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-slate-800 bg-slate-950/40 text-[11px]">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                className="px-3 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-semibold cursor-pointer"
+              >
+                Previous
+              </button>
+              <span className="text-slate-400">
+                Page <span className="font-bold text-white">{currentPage}</span> of <span className="font-bold text-white">{Math.ceil(transactions.length / 10)}</span>
+              </span>
+              <button
+                type="button"
+                disabled={currentPage === Math.ceil(transactions.length / 10)}
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(transactions.length / 10)))}
+                className="px-3 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed font-semibold cursor-pointer"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

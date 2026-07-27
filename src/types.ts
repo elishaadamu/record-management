@@ -12,6 +12,7 @@ export interface User {
   lastLogin?: string;
   phone?: string;
   assignedManagerId?: string;
+  managerId?: string;
 }
 
 export interface Permission {
