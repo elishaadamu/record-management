@@ -92,7 +92,8 @@ export const UserManagementModal: React.FC<UserManagementModalProps> = ({
           email,
           phone: phone || '07000000000',
           password: 'Password123!',
-          role: 'manager'
+          role: 'manager',
+          createdBy: currentUser?.id || currentUser?.name || 'admin'
         }).catch(() => {});
       }
 

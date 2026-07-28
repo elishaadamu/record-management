@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { useAuth, RegisterPayload } from '@context/AuthContext';
 import { useToast } from '@context/ToastContext';
+import { NIGERIAN_STATES, NIGERIA_STATES_AND_LGAS, getLgasForState } from '@/data/nigeriaStatesLga';
 import {
   User as UserIcon,
   Mail,
@@ -107,9 +108,9 @@ export const RegisterPage: React.FC = () => {
     localStorage.setItem(STORAGE_KEY_REGISTER_STEP, currentStep.toString());
   }, [currentStep]);
 
-  // States & LGAs API Integration using axios
-  const [statesList, setStatesList] = useState<string[]>([]);
-  const [lgasMap, setLgasMap] = useState<Record<string, string[]>>({});
+  // States & LGAs API Integration using static dataset with live fetch fallback
+  const [statesList, setStatesList] = useState<string[]>(NIGERIAN_STATES);
+  const [lgasMap, setLgasMap] = useState<Record<string, string[]>>(NIGERIA_STATES_AND_LGAS);
   const [isLoadingStates, setIsLoadingStates] = useState(false);
   const [loadingLgasFor, setLoadingLgasFor] = useState<Record<string, boolean>>({});
 
@@ -302,6 +303,7 @@ export const RegisterPage: React.FC = () => {
         showToast(res.message || 'Registration failed', 'error');
       }
     } catch (err: any) {
+
       setIsLoading(false);
       showToast(err?.message || 'Registration failed', 'error');
     }
@@ -342,10 +344,10 @@ export const RegisterPage: React.FC = () => {
                 <div className="flex flex-col items-center gap-1.5 cursor-pointer" onClick={() => handleStepChange(step.id)}>
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${isActive
-                        ? 'bg-indigo-600 ring-4 ring-indigo-500/20 text-white'
-                        : isCompleted
-                          ? 'bg-indigo-700 text-white'
-                          : 'bg-slate-200 text-slate-700 border border-slate-300'
+                      ? 'bg-indigo-600 ring-4 ring-indigo-500/20 text-white'
+                      : isCompleted
+                        ? 'bg-indigo-700 text-white'
+                        : 'bg-slate-200 text-slate-700 border border-slate-300'
                       }`}
                   >
                     {isCompleted ? (
@@ -358,10 +360,10 @@ export const RegisterPage: React.FC = () => {
                   </div>
                   <span
                     className={`text-[10px] uppercase tracking-wider font-semibold ${isActive
-                        ? 'text-indigo-600 font-bold'
-                        : isCompleted
-                          ? 'text-slate-800 font-semibold'
-                          : 'text-slate-500'
+                      ? 'text-indigo-600 font-bold'
+                      : isCompleted
+                        ? 'text-slate-800 font-semibold'
+                        : 'text-slate-500'
                       }`}
                   >
                     {step.title}

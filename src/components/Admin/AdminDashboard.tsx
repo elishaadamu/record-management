@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import axios from 'axios';
 import { useAuth } from '@context/AuthContext';
 import { useToast } from '@context/ToastContext';
 import { Modal } from '@components/Common/Modal';
 import { adminService } from '@/services/adminService';
+import { NIGERIAN_STATES, NIGERIA_STATES_AND_LGAS, getLgasForState } from '@/data/nigeriaStatesLga';
 import {
   Shield,
   BarChart3,
@@ -24,7 +26,13 @@ import {
   Phone,
   Mail,
   ArrowRight,
-  User as UserIcon
+  ArrowLeft,
+  User as UserIcon,
+  CreditCard,
+  MapPin,
+  FileText,
+  UserPlus,
+  Briefcase
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -53,16 +61,80 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
   const [isCreateManagerOpen, setIsCreateManagerOpen] = useState(false);
   const [selectedManagerDetails, setSelectedManagerDetails] = useState<any>(null);
   const [isLoadingManagerDetails, setIsLoadingManagerDetails] = useState(false);
+  const STORAGE_KEY_CREATE_MANAGER_FORM = 'admin_create_manager_form_draft';
+  const STORAGE_KEY_CREATE_MANAGER_TAB = 'admin_create_manager_tab_draft';
 
-  // Create Manager Form State
-  const [managerForm, setManagerForm] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    password: '',
-    role: 'manager'
+  const [createManagerTab, setCreateManagerTab] = useState<'account' | 'personal' | 'bank' | 'guarantor' | 'nextOfKin' | 'system'>(() => {
+    if (typeof window !== 'undefined') {
+      const savedTab = localStorage.getItem(STORAGE_KEY_CREATE_MANAGER_TAB) as any;
+      if (['account', 'personal', 'bank', 'guarantor', 'nextOfKin', 'system'].includes(savedTab)) {
+        return savedTab;
+      }
+    }
+    return 'account';
   });
+
+  // Nigerian States and LGAs (Initialized with complete static dataset for immediate rendering)
+  const [statesList, setStatesList] = useState<string[]>(NIGERIAN_STATES);
+  const [lgasMap, setLgasMap] = useState<Record<string, string[]>>(NIGERIA_STATES_AND_LGAS);
+  const [isLoadingStates, setIsLoadingStates] = useState(false);
+  const [loadingLgasFor, setLoadingLgasFor] = useState<Record<string, boolean>>({});
+
+  // Create Manager Form State (All 21 fields with localStorage persistence)
+  const [managerForm, setManagerForm] = useState(() => {
+    const defaultData = {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      password: '',
+      role: 'manager',
+      gender: 'Male',
+      dob: '',
+      maritalStatus: 'Single',
+      address: '',
+      state: '',
+      lga: '',
+      bankName: '',
+      accNumber: '',
+      accountName: '',
+      nin: '',
+      passportPhoto: '',
+      guarantors: [
+        { name: '', phone: '', address: '', state: '', lga: '', relationship: '' }
+      ],
+      nextOfKin: { name: '', phone: '', address: '', state: '', lga: '', relationship: '' },
+      createdBy: '',
+      managerId: ''
+    };
+
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY_CREATE_MANAGER_FORM);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return { ...defaultData, ...parsed, password: '', role: 'manager' };
+        }
+      } catch (e) {
+        // Quiet fail
+      }
+    }
+    return defaultData;
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const { password, ...safeDraft } = managerForm;
+      localStorage.setItem(STORAGE_KEY_CREATE_MANAGER_FORM, JSON.stringify(safeDraft));
+    }
+  }, [managerForm]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY_CREATE_MANAGER_TAB, createManagerTab);
+    }
+  }, [createManagerTab]);
+
   const [isSubmittingManager, setIsSubmittingManager] = useState(false);
   const [showManagerPassword, setShowManagerPassword] = useState(false);
 
@@ -168,6 +240,62 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
   };
 
   useEffect(() => {
+    let isMounted = true;
+    const fetchStates = async () => {
+      setIsLoadingStates(true);
+      try {
+        const response = await axios.get('https://nga-states-lga.onrender.com/fetch');
+        let data = response.data;
+        if (!Array.isArray(data) && data?.states) {
+          data = data.states;
+        }
+        if (isMounted && Array.isArray(data)) {
+          setStatesList(data);
+        }
+      } catch (err) {
+        // Quiet fail
+      } finally {
+        if (isMounted) setIsLoadingStates(false);
+      }
+    };
+    fetchStates();
+    return () => { isMounted = false; };
+  }, []);
+
+  const loadLgasForState = async (stateName: string) => {
+    if (!stateName || lgasMap[stateName]) return;
+    setLoadingLgasFor(prev => ({ ...prev, [stateName]: true }));
+    try {
+      const response = await axios.get(`https://nga-states-lga.onrender.com/?state=${encodeURIComponent(stateName)}`);
+      let data = response.data;
+      if (!Array.isArray(data)) {
+        data = data?.lgas || data?.lga || [];
+      }
+      if (Array.isArray(data)) {
+        setLgasMap(prev => ({ ...prev, [stateName]: data }));
+      }
+    } catch (err) {
+      // Quiet fail
+    } finally {
+      setLoadingLgasFor(prev => ({ ...prev, [stateName]: false }));
+    }
+  };
+
+  useEffect(() => {
+    if (managerForm.state) loadLgasForState(managerForm.state);
+  }, [managerForm.state]);
+
+  useEffect(() => {
+    const gState = managerForm.guarantors?.[0]?.state;
+    if (gState) loadLgasForState(gState);
+  }, [managerForm.guarantors?.[0]?.state]);
+
+  useEffect(() => {
+    const nokState = managerForm.nextOfKin?.state;
+    if (nokState) loadLgasForState(nokState);
+  }, [managerForm.nextOfKin?.state]);
+
+  useEffect(() => {
     fetchErStats();
     fetchManagers();
     fetchPendingWithdrawals();
@@ -175,15 +303,75 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
   }, []);
 
   // Handlers
+  const handlePassportUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 50KB = 50 * 1024 bytes)
+    const maxSizeBytes = 50 * 1024;
+    if (file.size > maxSizeBytes) {
+      showToast(`Image size (${(file.size / 1024).toFixed(1)}KB) exceeds 50KB limit. Please choose a smaller photo.`, 'error');
+      e.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64String = reader.result as string;
+      setManagerForm(prev => ({ ...prev, passportPhoto: base64String }));
+      showToast('Passport photo uploaded successfully', 'success');
+    };
+    reader.onerror = () => {
+      showToast('Failed to process passport photo file', 'error');
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleCreateManager = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!managerForm.firstName || !managerForm.lastName || !managerForm.email || !managerForm.phone || !managerForm.password) {
-      showToast('Please fill in all required fields.', 'error');
+      showToast('Please fill in required fields (First Name, Last Name, Email, Phone, Password).', 'error');
       return;
     }
     setIsSubmittingManager(true);
     try {
-      const res = await adminService.createManager(managerForm);
+      const payload: any = {
+        ...managerForm,
+        role: managerForm.role || 'manager',
+        createdBy: managerForm.createdBy || currentUser?.id || currentUser?.name || currentUser?.email || 'admin'
+      };
+
+      // Remove empty string managerId so MongoDB Mongoose does not attempt Cast to ObjectId
+      if (!payload.managerId || (typeof payload.managerId === 'string' && !payload.managerId.trim())) {
+        delete payload.managerId;
+      }
+
+      // Check Guarantor Name requirement
+      if (payload.guarantors && Array.isArray(payload.guarantors) && payload.guarantors.length > 0) {
+        const g = payload.guarantors[0];
+        const hasAnyGuarantorData = g.name || g.phone || g.address || g.state || g.lga || g.relationship;
+        if (hasAnyGuarantorData && !g.name?.trim()) {
+          showToast('Guarantor Name is required in the Guarantor tab.', 'error');
+          setCreateManagerTab('guarantor');
+          setIsSubmittingManager(false);
+          return;
+        }
+        if (!hasAnyGuarantorData) {
+          delete payload.guarantors;
+        }
+      }
+
+      // Remove empty nextOfKin object if no fields were provided
+      if (payload.nextOfKin) {
+        const nok = payload.nextOfKin;
+        if (!nok.name && !nok.phone && !nok.address && !nok.state && !nok.lga && !nok.relationship) {
+          delete payload.nextOfKin;
+        }
+      }
+
+      console.log('=== [AdminDashboard] Manager Creation Payload ===', payload);
+      const res = await adminService.createManager(payload);
+      console.log('=== [AdminDashboard] Manager Creation Success Response ===', res);
       showToast('Manager account created successfully!', 'success');
       setIsCreateManagerOpen(false);
 
@@ -197,11 +385,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
         email: '',
         phone: '',
         password: '',
-        role: 'manager'
+        role: 'manager',
+        gender: 'Male',
+        dob: '',
+        maritalStatus: 'Single',
+        address: '',
+        state: '',
+        lga: '',
+        bankName: '',
+        accNumber: '',
+        accountName: '',
+        nin: '',
+        passportPhoto: '',
+        guarantors: [
+          { name: '', phone: '', address: '', state: '', lga: '', relationship: '' }
+        ],
+        nextOfKin: { name: '', phone: '', address: '', state: '', lga: '', relationship: '' },
+        createdBy: '',
+        managerId: ''
       });
+      setCreateManagerTab('account');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(STORAGE_KEY_CREATE_MANAGER_FORM);
+        localStorage.removeItem(STORAGE_KEY_CREATE_MANAGER_TAB);
+      }
       fetchManagers();
     } catch (err: any) {
-      showToast(err?.message || 'Failed to create manager account', 'error');
+      console.error('=== [AdminDashboard] Manager Creation Error ===', err);
+      console.error('=== [AdminDashboard] Manager Creation Error Details ===', err?.response?.data || err?.response || err);
+      showToast(err?.response?.data?.message || err?.message || 'Failed to create manager account', 'error');
     } finally {
       setIsSubmittingManager(false);
     }
@@ -1170,90 +1382,655 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
 
       {/* CREATE MANAGER MODAL */}
       <Modal isOpen={isCreateManagerOpen} onClose={() => setIsCreateManagerOpen(false)} title="Create Manager Account">
-        <form onSubmit={handleCreateManager} className="space-y-3 text-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">First Name *</label>
-              <input
-                type="text"
-                required
-                value={managerForm.firstName}
-                onChange={e => setManagerForm(prev => ({ ...prev, firstName: e.target.value }))}
-                className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Last Name *</label>
-              <input
-                type="text"
-                required
-                value={managerForm.lastName}
-                onChange={e => setManagerForm(prev => ({ ...prev, lastName: e.target.value }))}
-                className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Email Address *</label>
-            <input
-              type="email"
-              required
-              value={managerForm.email}
-              onChange={e => setManagerForm(prev => ({ ...prev, email: e.target.value }))}
-              className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Phone Number *</label>
-              <input
-                type="tel"
-                required
-                value={managerForm.phone}
-                onChange={e => setManagerForm(prev => ({ ...prev, phone: e.target.value }))}
-                className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Password *</label>
-              <div className="relative">
-                <input
-                  type={showManagerPassword ? 'text' : 'password'}
-                  required
-                  value={managerForm.password}
-                  onChange={e => setManagerForm(prev => ({ ...prev, password: e.target.value }))}
-                  className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 pl-3 pr-10 text-xs text-white focus:border-indigo-500 focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowManagerPassword(!showManagerPassword)}
-                  className="absolute right-3 top-2 text-slate-400 hover:text-slate-200"
-                >
-                  {showManagerPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+        <div className="space-y-4 text-xs">
+          {/* Section Navigation Tabs */}
+          <div className="flex border-b border-slate-800 gap-1 overflow-x-auto pb-1 scrollbar-none">
             <button
               type="button"
-              onClick={() => setIsCreateManagerOpen(false)}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white"
+              onClick={() => setCreateManagerTab('account')}
+              className={`px-3 py-1.5 rounded-t-lg font-semibold text-[11px] whitespace-nowrap transition-colors ${createManagerTab === 'account'
+                ? 'bg-indigo-600/20 text-indigo-400 border-b-2 border-indigo-500'
+                : 'text-slate-400 hover:text-slate-200'
+                }`}
             >
-              Cancel
+              Account Credentials
             </button>
             <button
-              type="submit"
-              disabled={isSubmittingManager}
-              className="px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md cursor-pointer"
+              type="button"
+              onClick={() => setCreateManagerTab('personal')}
+              className={`px-3 py-1.5 rounded-t-lg font-semibold text-[11px] whitespace-nowrap transition-colors ${createManagerTab === 'personal'
+                ? 'bg-indigo-600/20 text-indigo-400 border-b-2 border-indigo-500'
+                : 'text-slate-400 hover:text-slate-200'
+                }`}
             >
-              {isSubmittingManager ? 'Creating...' : 'Create Manager'}
+              Personal & Address
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreateManagerTab('bank')}
+              className={`px-3 py-1.5 rounded-t-lg font-semibold text-[11px] whitespace-nowrap transition-colors ${createManagerTab === 'bank'
+                ? 'bg-indigo-600/20 text-indigo-400 border-b-2 border-indigo-500'
+                : 'text-slate-400 hover:text-slate-200'
+                }`}
+            >
+              Bank Account
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreateManagerTab('guarantor')}
+              className={`px-3 py-1.5 rounded-t-lg font-semibold text-[11px] whitespace-nowrap transition-colors ${createManagerTab === 'guarantor'
+                ? 'bg-indigo-600/20 text-indigo-400 border-b-2 border-indigo-500'
+                : 'text-slate-400 hover:text-slate-200'
+                }`}
+            >
+              Guarantor
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreateManagerTab('nextOfKin')}
+              className={`px-3 py-1.5 rounded-t-lg font-semibold text-[11px] whitespace-nowrap transition-colors ${createManagerTab === 'nextOfKin'
+                ? 'bg-indigo-600/20 text-indigo-400 border-b-2 border-indigo-500'
+                : 'text-slate-400 hover:text-slate-200'
+                }`}
+            >
+              Next of Kin
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreateManagerTab('system')}
+              className={`px-3 py-1.5 rounded-t-lg font-semibold text-[11px] whitespace-nowrap transition-colors ${createManagerTab === 'system'
+                ? 'bg-indigo-600/20 text-indigo-400 border-b-2 border-indigo-500'
+                : 'text-slate-400 hover:text-slate-200'
+                }`}
+            >
+              System Info
             </button>
           </div>
-        </form>
+
+          <form onSubmit={handleCreateManager} className="space-y-4">
+            {/* TAB 1: Account Credentials */}
+            {createManagerTab === 'account' && (
+              <div className="space-y-3 animate-in fade-in duration-150">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">First Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={managerForm.firstName}
+                      onChange={e => setManagerForm(prev => ({ ...prev, firstName: e.target.value }))}
+                      placeholder="e.g. John"
+                      className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Last Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={managerForm.lastName}
+                      onChange={e => setManagerForm(prev => ({ ...prev, lastName: e.target.value }))}
+                      placeholder="e.g. Doe"
+                      className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Email Address *</label>
+                  <input
+                    type="email"
+                    required
+                    value={managerForm.email}
+                    onChange={e => setManagerForm(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="manager@example.com"
+                    className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Phone Number *</label>
+                    <input
+                      type="tel"
+                      required
+                      value={managerForm.phone}
+                      onChange={e => setManagerForm(prev => ({ ...prev, phone: e.target.value }))}
+                      placeholder="08012345678"
+                      className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Password *</label>
+                    <div className="relative">
+                      <input
+                        type={showManagerPassword ? 'text' : 'password'}
+                        required
+                        value={managerForm.password}
+                        onChange={e => setManagerForm(prev => ({ ...prev, password: e.target.value }))}
+                        className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 pl-3 pr-10 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowManagerPassword(!showManagerPassword)}
+                        className="absolute right-3 top-2 text-slate-400 hover:text-slate-200"
+                      >
+                        {showManagerPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Role</label>
+                    <input
+                      type="text"
+                      disabled
+                      value={managerForm.role}
+                      className="w-full rounded-lg border border-slate-800 bg-slate-900 py-2 px-3 text-xs text-slate-400 cursor-not-allowed capitalize"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">
+                      Passport Photo (JPG, PNG, WEBP — Max 50KB)
+                    </label>
+                    <div className="flex items-center gap-3 mt-1">
+                      {managerForm.passportPhoto ? (
+                        <div className="relative w-11 h-11 rounded-lg overflow-hidden border border-slate-800 bg-slate-950 shrink-0">
+                          <img src={managerForm.passportPhoto} alt="Passport Preview" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setManagerForm(prev => ({ ...prev, passportPhoto: '' }))}
+                            className="absolute top-0 right-0 bg-red-600 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-bl hover:bg-red-700 cursor-pointer"
+                            title="Remove photo"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-11 h-11 rounded-lg border border-dashed border-slate-800 bg-slate-950 flex items-center justify-center text-slate-500 shrink-0">
+                          <UserIcon className="w-5 h-5 text-slate-500" />
+                        </div>
+                      )}
+
+                      <div className="flex-1">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/jpg"
+                          onChange={handlePassportUpload}
+                          className="block w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer"
+                        />
+                        <p className="text-[10px] text-slate-500 mt-1">
+                          {managerForm.passportPhoto ? 'Photo selected. Choose another file to replace.' : 'Max size: 50KB'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: Personal Details & Location */}
+            {createManagerTab === 'personal' && (
+              <div className="space-y-3 animate-in fade-in duration-150">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Gender</label>
+                    <select
+                      value={managerForm.gender}
+                      onChange={e => setManagerForm(prev => ({ ...prev, gender: e.target.value }))}
+                      className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Date of Birth</label>
+                    <input
+                      type="date"
+                      value={managerForm.dob}
+                      onChange={e => setManagerForm(prev => ({ ...prev, dob: e.target.value }))}
+                      className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Marital Status</label>
+                    <select
+                      value={managerForm.maritalStatus}
+                      onChange={e => setManagerForm(prev => ({ ...prev, maritalStatus: e.target.value }))}
+                      className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    >
+                      <option value="Single">Single</option>
+                      <option value="Married">Married</option>
+                      <option value="Divorced">Divorced</option>
+                      <option value="Widowed">Widowed</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">NIN (National Identity Number)</label>
+                  <input
+                    type="text"
+                    value={managerForm.nin}
+                    onChange={e => setManagerForm(prev => ({ ...prev, nin: e.target.value }))}
+                    placeholder="11-digit NIN"
+                    className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Address</label>
+                  <input
+                    type="text"
+                    value={managerForm.address}
+                    onChange={e => setManagerForm(prev => ({ ...prev, address: e.target.value }))}
+                    placeholder="Residential address"
+                    className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">State</label>
+                    <select
+                      value={managerForm.state}
+                      onChange={e => setManagerForm(prev => ({ ...prev, state: e.target.value, lga: '' }))}
+                      className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    >
+                      <option value="">-- Select State --</option>
+                      {statesList.map(st => (
+                        <option key={st} value={st}>{st}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">LGA</label>
+                    <select
+                      value={managerForm.lga}
+                      onChange={e => setManagerForm(prev => ({ ...prev, lga: e.target.value }))}
+                      disabled={!managerForm.state}
+                      className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none disabled:opacity-50"
+                    >
+                      <option value="">-- Select LGA --</option>
+                      {(managerForm.state && lgasMap[managerForm.state] ? lgasMap[managerForm.state] : []).map(l => (
+                        <option key={l} value={l}>{l}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: Financial & Bank Details */}
+            {createManagerTab === 'bank' && (
+              <div className="space-y-3 animate-in fade-in duration-150">
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Bank Name</label>
+                  <input
+                    type="text"
+                    value={managerForm.bankName}
+                    onChange={e => setManagerForm(prev => ({ ...prev, bankName: e.target.value }))}
+                    placeholder="e.g. Access Bank, Zenith Bank"
+                    className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Account Number</label>
+                    <input
+                      type="text"
+                      value={managerForm.accNumber}
+                      onChange={e => setManagerForm(prev => ({ ...prev, accNumber: e.target.value }))}
+                      placeholder="10-digit account number"
+                      className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Account Name</label>
+                    <input
+                      type="text"
+                      value={managerForm.accountName}
+                      onChange={e => setManagerForm(prev => ({ ...prev, accountName: e.target.value }))}
+                      placeholder="Account holder name"
+                      className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: Guarantor Details */}
+            {createManagerTab === 'guarantor' && (
+              <div className="space-y-3 animate-in fade-in duration-150">
+                <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 space-y-3">
+                  <h4 className="text-[11px] font-bold text-indigo-400 uppercase">Guarantor Information</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Guarantor Name *</label>
+                      <input
+                        type="text"
+                        value={managerForm.guarantors[0]?.name || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setManagerForm(prev => {
+                            const g = [...prev.guarantors];
+                            g[0] = { ...g[0], name: val };
+                            return { ...prev, guarantors: g };
+                          });
+                        }}
+                        placeholder="Full name"
+                        className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Guarantor Phone</label>
+                      <input
+                        type="tel"
+                        value={managerForm.guarantors[0]?.phone || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setManagerForm(prev => {
+                            const g = [...prev.guarantors];
+                            g[0] = { ...g[0], phone: val };
+                            return { ...prev, guarantors: g };
+                          });
+                        }}
+                        placeholder="Phone number"
+                        className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Relationship</label>
+                      <input
+                        type="text"
+                        value={managerForm.guarantors[0]?.relationship || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setManagerForm(prev => {
+                            const g = [...prev.guarantors];
+                            g[0] = { ...g[0], relationship: val };
+                            return { ...prev, guarantors: g };
+                          });
+                        }}
+                        placeholder="e.g. Brother, Employer"
+                        className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Address</label>
+                      <input
+                        type="text"
+                        value={managerForm.guarantors[0]?.address || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setManagerForm(prev => {
+                            const g = [...prev.guarantors];
+                            g[0] = { ...g[0], address: val };
+                            return { ...prev, guarantors: g };
+                          });
+                        }}
+                        placeholder="Guarantor address"
+                        className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">State</label>
+                      <select
+                        value={managerForm.guarantors[0]?.state || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setManagerForm(prev => {
+                            const g = [...prev.guarantors];
+                            g[0] = { ...g[0], state: val, lga: '' };
+                            return { ...prev, guarantors: g };
+                          });
+                        }}
+                        className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                      >
+                        <option value="">-- Select State --</option>
+                        {statesList.map(st => (
+                          <option key={st} value={st}>{st}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">LGA</label>
+                      <select
+                        value={managerForm.guarantors[0]?.lga || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setManagerForm(prev => {
+                            const g = [...prev.guarantors];
+                            g[0] = { ...g[0], lga: val };
+                            return { ...prev, guarantors: g };
+                          });
+                        }}
+                        disabled={!managerForm.guarantors[0]?.state}
+                        className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none disabled:opacity-50"
+                      >
+                        <option value="">-- Select LGA --</option>
+                        {(managerForm.guarantors[0]?.state && lgasMap[managerForm.guarantors[0].state] ? lgasMap[managerForm.guarantors[0].state] : []).map(l => (
+                          <option key={l} value={l}>{l}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 5: Next of Kin Details */}
+            {createManagerTab === 'nextOfKin' && (
+              <div className="space-y-3 animate-in fade-in duration-150">
+                <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 space-y-3">
+                  <h4 className="text-[11px] font-bold text-indigo-400 uppercase">Next of Kin Information</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Full Name</label>
+                      <input
+                        type="text"
+                        value={managerForm.nextOfKin?.name || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setManagerForm(prev => ({
+                            ...prev,
+                            nextOfKin: { ...prev.nextOfKin, name: val }
+                          }));
+                        }}
+                        placeholder="Next of Kin Name"
+                        className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Phone Number</label>
+                      <input
+                        type="tel"
+                        value={managerForm.nextOfKin?.phone || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setManagerForm(prev => ({
+                            ...prev,
+                            nextOfKin: { ...prev.nextOfKin, phone: val }
+                          }));
+                        }}
+                        placeholder="Phone Number"
+                        className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Relationship</label>
+                      <input
+                        type="text"
+                        value={managerForm.nextOfKin?.relationship || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setManagerForm(prev => ({
+                            ...prev,
+                            nextOfKin: { ...prev.nextOfKin, relationship: val }
+                          }));
+                        }}
+                        placeholder="e.g. Spouse, Sister"
+                        className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Address</label>
+                      <input
+                        type="text"
+                        value={managerForm.nextOfKin?.address || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setManagerForm(prev => ({
+                            ...prev,
+                            nextOfKin: { ...prev.nextOfKin, address: val }
+                          }));
+                        }}
+                        placeholder="Residential Address"
+                        className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">State</label>
+                      <select
+                        value={managerForm.nextOfKin?.state || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setManagerForm(prev => ({
+                            ...prev,
+                            nextOfKin: { ...prev.nextOfKin, state: val, lga: '' }
+                          }));
+                        }}
+                        className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                      >
+                        <option value="">-- Select State --</option>
+                        {statesList.map(st => (
+                          <option key={st} value={st}>{st}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">LGA</label>
+                      <select
+                        value={managerForm.nextOfKin?.lga || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setManagerForm(prev => ({
+                            ...prev,
+                            nextOfKin: { ...prev.nextOfKin, lga: val }
+                          }));
+                        }}
+                        disabled={!managerForm.nextOfKin?.state}
+                        className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none disabled:opacity-50"
+                      >
+                        <option value="">-- Select LGA --</option>
+                        {(managerForm.nextOfKin?.state && lgasMap[managerForm.nextOfKin.state] ? lgasMap[managerForm.nextOfKin.state] : []).map(l => (
+                          <option key={l} value={l}>{l}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 6: System & Administration */}
+            {createManagerTab === 'system' && (
+              <div className="space-y-3 animate-in fade-in duration-150">
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Created By / Provisioned By</label>
+                  <input
+                    type="text"
+                    value={managerForm.createdBy || currentUser?.name || currentUser?.id || 'Admin'}
+                    onChange={e => setManagerForm(prev => ({ ...prev, createdBy: e.target.value }))}
+                    placeholder="Admin Identifier"
+                    className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Custom Manager ID (Optional)</label>
+                  <input
+                    type="text"
+                    value={managerForm.managerId}
+                    onChange={e => setManagerForm(prev => ({ ...prev, managerId: e.target.value }))}
+                    placeholder="Leave empty for auto-generated ID"
+                    className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between pt-4 border-t border-slate-800 mt-2">
+              <div>
+                {createManagerTab !== 'account' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const tabs: ('account' | 'personal' | 'bank' | 'guarantor' | 'nextOfKin' | 'system')[] = ['account', 'personal', 'bank', 'guarantor', 'nextOfKin', 'system'];
+                      const idx = tabs.indexOf(createManagerTab);
+                      if (idx > 0) setCreateManagerTab(tabs[idx - 1]);
+                    }}
+                    className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 border border-slate-800 flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Previous Step
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateManagerOpen(false)}
+                    className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white border border-slate-800/80 bg-slate-950/60 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {createManagerTab !== 'system' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const tabs: ('account' | 'personal' | 'bank' | 'guarantor' | 'nextOfKin' | 'system')[] = ['account', 'personal', 'bank', 'guarantor', 'nextOfKin', 'system'];
+                      const idx = tabs.indexOf(createManagerTab);
+                      if (idx < tabs.length - 1) setCreateManagerTab(tabs[idx + 1]);
+                    }}
+                    className="px-4 py-2 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md flex items-center gap-1.5 cursor-pointer"
+                  >
+                    Next Step
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={isSubmittingManager}
+                    className="px-5 py-2 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md cursor-pointer flex items-center gap-1.5"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    {isSubmittingManager ? 'Creating Manager...' : 'Create Manager'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </form>
+        </div>
       </Modal>
 
       {/* VIEW MANAGER PROFILE & CREATION DETAILS MODAL */}
@@ -1292,21 +2069,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
               selectedManagerDetails?.data ||
               selectedManagerDetails;
 
-
             const fName = item?.firstName || item?.name?.split(' ')[0] || '';
             const lName = item?.lastName || item?.name?.split(' ').slice(1).join(' ') || '';
             const fullName = item?.name || `${fName} ${lName}`.trim() || item?.email || 'Manager';
             const initial = fName[0] || lName[0] || fullName[0] || 'M';
             const isApproved = item?.isApproved ?? (item?.status === 'active' || item?.status === 'Approved');
 
+            const guarantorObj = Array.isArray(item?.guarantors) ? item.guarantors[0] : item?.guarantors;
+            const nokObj = item?.nextOfKin;
+
             return (
-              <div className="space-y-3.5 text-xs">
+              <div className="space-y-3.5 text-xs max-h-[80vh] overflow-y-auto pr-1">
                 {/* Header Profile Box */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-slate-950 border border-slate-800">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 shrink-0 rounded-full bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300 font-bold text-sm">
-                      {initial.toUpperCase()}
-                    </div>
+                    {item?.passportPhoto ? (
+                      <img src={item.passportPhoto} alt={fullName} className="h-10 w-10 shrink-0 rounded-full object-cover border border-indigo-500/40" />
+                    ) : (
+                      <div className="h-10 w-10 shrink-0 rounded-full bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300 font-bold text-sm">
+                        {initial.toUpperCase()}
+                      </div>
+                    )}
                     <div>
                       <h4 className="text-sm font-bold text-white">{fullName}</h4>
                       <p className="text-[11px] text-slate-400">{item?.email || 'No email specified'}</p>
@@ -1320,61 +2103,142 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                   </span>
                 </div>
 
-                {/* Info Grid */}
-                <div className="grid grid-cols-2 gap-2.5">
+                {/* Account & Personal Information */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Personal & Identity</span>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block mb-0.5">Phone</span>
+                      <span className="text-slate-200 font-medium">{item?.phone || 'N/A'}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block mb-0.5">Gender</span>
+                      <span className="text-slate-200 font-medium capitalize">{item?.gender || 'N/A'}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block mb-0.5">Date of Birth</span>
+                      <span className="text-slate-200 font-medium">{item?.dob || 'N/A'}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block mb-0.5">Marital Status</span>
+                      <span className="text-slate-200 font-medium">{item?.maritalStatus || 'N/A'}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block mb-0.5">NIN</span>
+                      <span className="text-slate-200 font-mono text-[11px]">{item?.nin || 'N/A'}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block mb-0.5">Manager ID</span>
+                      <span className="text-slate-300 font-mono text-[11px] select-all break-all">{item?.managerId || item?._id || item?.id || 'N/A'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Address & Location */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Address & Location</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 sm:col-span-3">
+                      <span className="text-[10px] text-slate-400 block mb-0.5">Residential Address</span>
+                      <span className="text-slate-200 font-medium">{item?.address || 'N/A'}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block mb-0.5">State</span>
+                      <span className="text-slate-200 font-medium">{item?.state || 'N/A'}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block mb-0.5">LGA</span>
+                      <span className="text-slate-200 font-medium">{item?.lga || 'N/A'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Financial & Banking Information */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Bank Account Details</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block mb-0.5">Bank Name</span>
+                      <span className="text-slate-200 font-medium">{item?.bankName || 'N/A'}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block mb-0.5">Account Number</span>
+                      <span className="text-emerald-400 font-mono font-bold text-[11px]">{item?.accNumber || 'N/A'}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
+                      <span className="text-[10px] text-slate-400 block mb-0.5">Account Name</span>
+                      <span className="text-slate-200 font-medium">{item?.accountName || 'N/A'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Guarantor Details */}
+                {guarantorObj && (
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] text-indigo-400 uppercase font-semibold block">Guarantor Information</span>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-2.5 rounded-lg bg-slate-950/80 border border-slate-800">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Name</span>
+                        <span className="text-slate-200 font-medium">{guarantorObj.name || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Phone</span>
+                        <span className="text-slate-200 font-medium">{guarantorObj.phone || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Relationship</span>
+                        <span className="text-slate-200 font-medium">{guarantorObj.relationship || 'N/A'}</span>
+                      </div>
+                      <div className="col-span-2 sm:col-span-3">
+                        <span className="text-[10px] text-slate-400 block">Address</span>
+                        <span className="text-slate-200">{guarantorObj.address || 'N/A'} {guarantorObj.lga ? `, ${guarantorObj.lga}` : ''} {guarantorObj.state ? `, ${guarantorObj.state}` : ''}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Next of Kin Details */}
+                {nokObj && (
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] text-indigo-400 uppercase font-semibold block">Next of Kin Information</span>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-2.5 rounded-lg bg-slate-950/80 border border-slate-800">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Name</span>
+                        <span className="text-slate-200 font-medium">{nokObj.name || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Phone</span>
+                        <span className="text-slate-200 font-medium">{nokObj.phone || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Relationship</span>
+                        <span className="text-slate-200 font-medium">{nokObj.relationship || 'N/A'}</span>
+                      </div>
+                      <div className="col-span-2 sm:col-span-3">
+                        <span className="text-[10px] text-slate-400 block">Address</span>
+                        <span className="text-slate-200">{nokObj.address || 'N/A'} {nokObj.lga ? `, ${nokObj.lga}` : ''} {nokObj.state ? `, ${nokObj.state}` : ''}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Created By Details */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block mb-0.5">Phone</span>
-                    <span className="text-slate-200 font-medium">{item?.phone || 'N/A'}</span>
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block mb-0.5">Provisioned By</span>
+                    <div className="text-slate-200 text-[11px] font-medium">
+                      {typeof item?.createdBy === 'object'
+                        ? `${item.createdBy.firstName || ''} ${item.createdBy.lastName || ''}`.trim() + ` (${item.createdBy.email || ''})`
+                        : item?.createdBy || 'Admin'}
+                    </div>
                   </div>
                   <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block mb-0.5">Role</span>
-                    <span className="text-indigo-300 font-medium capitalize">{item?.role || 'manager'}</span>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block mb-0.5">Manager ID</span>
-                    <span className="text-slate-300 font-mono text-[11px] select-all break-all">{item?._id || item?.id || 'N/A'}</span>
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block mb-0.5">Created Date</span>
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block mb-0.5">Creation Date</span>
                     <span className="text-slate-300 text-[11px]">
                       {item?.createdAt ? new Date(item.createdAt).toLocaleString() : 'N/A'}
                     </span>
                   </div>
                 </div>
-
-                {/* Created By Details */}
-                {item?.createdBy && (
-                  <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800">
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block mb-0.5">Provisioned By</span>
-                    <div className="text-slate-200 text-[11px] font-medium">
-                      {typeof item.createdBy === 'object'
-                        ? `${item.createdBy.firstName || ''} ${item.createdBy.lastName || ''}`.trim() + ` (${item.createdBy.email || ''})`
-                        : item.createdBy}
-                    </div>
-                  </div>
-                )}
-
-                {/* ER Counts */}
-                {item?.erCounts && (
-                  <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block mb-1.5">ER Activity Summary</span>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="p-2 text-center rounded-lg bg-slate-950 border border-slate-800">
-                        <span className="text-[10px] text-slate-400 block">Total</span>
-                        <span className="text-xs font-bold text-indigo-400">{item.erCounts.total ?? 0}</span>
-                      </div>
-                      <div className="p-2 text-center rounded-lg bg-slate-950 border border-slate-800">
-                        <span className="text-[10px] text-slate-400 block">Weekly</span>
-                        <span className="text-xs font-bold text-indigo-400">{item.erCounts.weekly ?? 0}</span>
-                      </div>
-                      <div className="p-2 text-center rounded-lg bg-slate-950 border border-slate-800">
-                        <span className="text-[10px] text-slate-400 block">Monthly</span>
-                        <span className="text-xs font-bold text-indigo-400">{item.erCounts.monthly ?? 0}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
 
                 <div className="flex justify-end pt-2 border-t border-slate-800">
                   <button

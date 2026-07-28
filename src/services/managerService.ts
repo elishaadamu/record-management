@@ -1,5 +1,23 @@
 import axios, { apiUrl, API_CONFIG } from './api';
 
+export interface GuarantorInfo {
+  name?: string;
+  phone?: string;
+  address?: string;
+  state?: string;
+  lga?: string;
+  relationship?: string;
+}
+
+export interface NextOfKinInfo {
+  name?: string;
+  phone?: string;
+  address?: string;
+  state?: string;
+  lga?: string;
+  relationship?: string;
+}
+
 export interface RegisterAgentPayload {
   firstName: string;
   lastName: string;
@@ -7,6 +25,20 @@ export interface RegisterAgentPayload {
   phone: string;
   password?: string;
   role: string;
+  gender?: string;
+  dob?: string;
+  maritalStatus?: string;
+  address?: string;
+  state?: string;
+  lga?: string;
+  bankName?: string;
+  accNumber?: string;
+  accountName?: string;
+  nin?: string;
+  passportPhoto?: string;
+  guarantors?: GuarantorInfo | GuarantorInfo[];
+  nextOfKin?: NextOfKinInfo;
+  createdBy?: string;
   managerId?: string;
   [key: string]: any;
 }
@@ -41,10 +73,19 @@ export const managerService = {
   // Register agents
   registerAgent: async (payload: RegisterAgentPayload) => {
     try {
-      // Re-use signup route
-      const response = await axios.post(apiUrl(API_CONFIG.ENDPOINTS.AUTH.SIGNUP), payload);
+      const sanitizedPayload = { ...payload };
+      if (typeof sanitizedPayload.managerId === 'string' && !sanitizedPayload.managerId.trim()) {
+        delete sanitizedPayload.managerId;
+      }
+      if (typeof sanitizedPayload.createdBy === 'string' && !sanitizedPayload.createdBy.trim()) {
+        delete sanitizedPayload.createdBy;
+      }
+      console.log('=== [managerService.registerAgent] Request Payload ===', sanitizedPayload);
+      const response = await axios.post(apiUrl(API_CONFIG.ENDPOINTS.AUTH.SIGNUP), sanitizedPayload);
+      console.log('=== [managerService.registerAgent] Response ===', response.data);
       return response.data;
     } catch (error: any) {
+      console.error('=== [managerService.registerAgent] Error ===', error?.response?.data || error?.response || error);
       throw error;
     }
   },

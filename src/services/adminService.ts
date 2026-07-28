@@ -1,5 +1,23 @@
 import axios, { apiUrl, API_CONFIG } from './api';
 
+export interface GuarantorInfo {
+  name?: string;
+  phone?: string;
+  address?: string;
+  state?: string;
+  lga?: string;
+  relationship?: string;
+}
+
+export interface NextOfKinInfo {
+  name?: string;
+  phone?: string;
+  address?: string;
+  state?: string;
+  lga?: string;
+  relationship?: string;
+}
+
 export interface ManagerPayload {
   firstName: string;
   lastName: string;
@@ -7,6 +25,21 @@ export interface ManagerPayload {
   phone: string;
   password?: string;
   role: string;
+  gender?: string;
+  dob?: string;
+  maritalStatus?: string;
+  address?: string;
+  state?: string;
+  lga?: string;
+  bankName?: string;
+  accNumber?: string;
+  accountName?: string;
+  nin?: string;
+  passportPhoto?: string;
+  guarantors?: GuarantorInfo | GuarantorInfo[];
+  nextOfKin?: NextOfKinInfo;
+  createdBy?: string;
+  managerId?: string;
   [key: string]: any;
 }
 
@@ -52,9 +85,16 @@ export const adminService = {
   // Manager Management
   createManager: async (payload: ManagerPayload) => {
     try {
-      const response = await axios.post(apiUrl(API_CONFIG.ENDPOINTS.ADMIN.MANAGERS), payload);
+      const sanitizedPayload = { ...payload };
+      if (typeof sanitizedPayload.managerId === 'string' && !sanitizedPayload.managerId.trim()) {
+        delete sanitizedPayload.managerId;
+      }
+      console.log('=== [adminService.createManager] Sending Request Payload ===', sanitizedPayload);
+      const response = await axios.post(apiUrl(API_CONFIG.ENDPOINTS.ADMIN.MANAGERS), sanitizedPayload);
+      console.log('=== [adminService.createManager] Response Data ===', response.data);
       return response.data;
     } catch (error: any) {
+      console.error('=== [adminService.createManager] Request Error ===', error?.response?.data || error?.response || error);
       throw error;
     }
   },
