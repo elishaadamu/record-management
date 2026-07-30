@@ -24,8 +24,6 @@ export default function ManagerPropertiesPage() {
     setCurrentPage(1);
     try {
       const res = await managerService.getAssignedProperties();
-      console.log('=== [ManagerPropertiesPage] Response ===', res);
-      
       // Parse stats
       const parsedStats = res?.stats || res?.data?.stats || null;
       setStats(parsedStats);
@@ -171,11 +169,10 @@ export default function ManagerPropertiesPage() {
                     <td className="py-2.5 px-3 font-mono text-slate-300">{p.propertyNumber || p.number || 'N/A'}</td>
                     <td className="py-2.5 px-3 text-indigo-300 font-medium">{getAgentDisplayName(p)}</td>
                     <td className="py-2.5 px-3">
-                      <span className={`px-2 py-0.5 rounded border text-[10px] font-semibold uppercase ${
-                        (p.status === 'available' || p.status === 'active')
+                      <span className={`px-2 py-0.5 rounded border text-[10px] font-semibold uppercase ${(p.status === 'available' || p.status === 'active')
                           ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800/60'
                           : 'bg-slate-950 text-slate-400 border-slate-800'
-                      }`}>
+                        }`}>
                         {p.status || 'Active'}
                       </span>
                     </td>
