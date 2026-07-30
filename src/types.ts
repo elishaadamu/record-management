@@ -2,10 +2,14 @@ export type UserRole = 'admin' | 'manager' | 'agent' | 'user';
 
 export interface User {
   id: string;
+  _id?: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   role: UserRole;
   avatar: string;
+  passportPhoto?: string;
   department: string;
   status: 'active' | 'inactive' | 'suspended';
   title: string;
@@ -13,6 +17,19 @@ export interface User {
   phone?: string;
   assignedManagerId?: string;
   managerId?: string;
+  bankName?: string;
+  accNumber?: string;
+  accountName?: string;
+  state?: string;
+  lga?: string;
+  address?: string;
+  gender?: string;
+  dob?: string;
+  maritalStatus?: string;
+  nin?: string;
+  guarantors?: any;
+  nextOfKin?: any;
+  createdBy?: string;
 }
 
 export interface Permission {

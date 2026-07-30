@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useAuth } from '@context/AuthContext';
 import { useToast } from '@context/ToastContext';
 import { Modal } from '@components/Common/Modal';
+import { TableSkeleton } from '@components/Common/Skeleton';
 import { adminService } from '@/services/adminService';
 import { NIGERIAN_STATES, NIGERIA_STATES_AND_LGAS, getLgasForState } from '@/data/nigeriaStatesLga';
 import {
@@ -32,7 +33,8 @@ import {
   MapPin,
   FileText,
   UserPlus,
-  Briefcase
+  Briefcase,
+  Trash2
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -225,6 +227,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
     }
   };
 
+  const [allAgents, setAllAgents] = useState<any[]>([]);
+  const [isLoadingAllAgents, setIsLoadingAllAgents] = useState(false);
+
+  const fetchAllAgents = async () => {
+    setIsLoadingAllAgents(true);
+    try {
+      const res = await adminService.getAgents();
+      const list = Array.isArray(res?.data?.agents)
+        ? res.data.agents
+        : Array.isArray(res?.agents)
+        ? res.agents
+        : Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res)
+        ? res
+        : [];
+      setAllAgents(list);
+    } catch (e: any) {
+      // Quiet fail
+    } finally {
+      setIsLoadingAllAgents(false);
+    }
+  };
+
   const fetchProperties = async () => {
     setIsLoadingProperties(true);
     setPropertiesPage(1);
@@ -300,6 +326,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
     fetchManagers();
     fetchPendingWithdrawals();
     fetchProperties();
+    fetchAllAgents();
   }, []);
 
   // Handlers
@@ -346,32 +373,54 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
         delete payload.managerId;
       }
 
-      // Check Guarantor Name requirement
-      if (payload.guarantors && Array.isArray(payload.guarantors) && payload.guarantors.length > 0) {
-        const g = payload.guarantors[0];
-        const hasAnyGuarantorData = g.name || g.phone || g.address || g.state || g.lga || g.relationship;
-        if (hasAnyGuarantorData && !g.name?.trim()) {
-          showToast('Guarantor Name is required in the Guarantor tab.', 'error');
-          setCreateManagerTab('guarantor');
-          setIsSubmittingManager(false);
-          return;
-        }
-        if (!hasAnyGuarantorData) {
-          delete payload.guarantors;
-        }
+      // Require Guarantor Name
+      const guarantorName = managerForm.guarantors[0]?.name?.trim();
+      if (!guarantorName) {
+        showToast('Guarantor Name is required in the Guarantor tab.', 'error');
+        setCreateManagerTab('guarantor');
+        setIsSubmittingManager(false);
+        return;
       }
 
-      // Remove empty nextOfKin object if no fields were provided
-      if (payload.nextOfKin) {
-        const nok = payload.nextOfKin;
-        if (!nok.name && !nok.phone && !nok.address && !nok.state && !nok.lga && !nok.relationship) {
-          delete payload.nextOfKin;
-        }
+      const guarantorObj = {
+        name: guarantorName,
+        phone: managerForm.guarantors[0]?.phone?.trim() || '',
+        address: managerForm.guarantors[0]?.address?.trim() || '',
+        state: managerForm.guarantors[0]?.state || '',
+        lga: managerForm.guarantors[0]?.lga || '',
+        relationship: managerForm.guarantors[0]?.relationship?.trim() || ''
+      };
+      payload.guarantors = [guarantorObj];
+      payload.guarantor = guarantorObj;
+      payload.guarantorName = guarantorName;
+      payload.guarantorPhone = guarantorObj.phone;
+      payload.guarantorAddress = guarantorObj.address;
+      payload.guarantorState = guarantorObj.state;
+      payload.guarantorLga = guarantorObj.lga;
+      payload.guarantorRelationship = guarantorObj.relationship;
+
+      // Handle nextOfKin flat and nested fields
+      if (managerForm.nextOfKin && managerForm.nextOfKin.name?.trim()) {
+        const nokObj = {
+          name: managerForm.nextOfKin.name.trim(),
+          phone: managerForm.nextOfKin.phone?.trim() || '',
+          address: managerForm.nextOfKin.address?.trim() || '',
+          state: managerForm.nextOfKin.state || '',
+          lga: managerForm.nextOfKin.lga || '',
+          relationship: managerForm.nextOfKin.relationship?.trim() || ''
+        };
+        payload.nextOfKin = nokObj;
+        payload.nextOfKinName = nokObj.name;
+        payload.nextOfKinPhone = nokObj.phone;
+        payload.nextOfKinAddress = nokObj.address;
+        payload.nextOfKinState = nokObj.state;
+        payload.nextOfKinLga = nokObj.lga;
+        payload.nextOfKinRelationship = nokObj.relationship;
+      } else if (payload.nextOfKin) {
+        delete payload.nextOfKin;
       }
 
-      console.log('=== [AdminDashboard] Manager Creation Payload ===', payload);
       const res = await adminService.createManager(payload);
-      console.log('=== [AdminDashboard] Manager Creation Success Response ===', res);
       showToast('Manager account created successfully!', 'success');
       setIsCreateManagerOpen(false);
 
@@ -411,8 +460,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
       }
       fetchManagers();
     } catch (err: any) {
-      console.error('=== [AdminDashboard] Manager Creation Error ===', err);
-      console.error('=== [AdminDashboard] Manager Creation Error Details ===', err?.response?.data || err?.response || err);
       showToast(err?.response?.data?.message || err?.message || 'Failed to create manager account', 'error');
     } finally {
       setIsSubmittingManager(false);
@@ -432,6 +479,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
     }
   };
 
+  const handleDeleteManager = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete manager "${name}"?`)) return;
+    try {
+      await adminService.deleteManager(id);
+      showToast(`Manager "${name}" deleted successfully!`, 'success');
+      fetchManagers();
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || err?.message || 'Failed to delete manager.', 'error');
+    }
+  };
+
   const handleWalletOperation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!walletForm.userId || !walletForm.amount || !walletForm.description) {
@@ -440,14 +498,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
     }
     setIsSubmittingWallet(true);
     try {
-      const payload = {
+      const payload: any = {
         userId: walletForm.userId,
+        agentId: walletForm.userId,
+        managerId: walletForm.userId,
         amount: Number(walletForm.amount) || walletForm.amount,
-        description: walletForm.description
+        description: walletForm.description,
+        remarks: walletForm.description
       };
       if (walletForm.type === 'credit') {
         await adminService.creditWallet(payload);
-        showToast(`Successfully credited ₦${walletForm.amount} to user ${walletForm.userId}`, 'success');
+        showToast(`Successfully credited ₦${walletForm.amount} to ID ${walletForm.userId}`, 'success');
       } else {
         await adminService.debitWallet(payload);
         showToast(`Successfully debited ₦${walletForm.amount} from user ${walletForm.userId}`, 'success');
@@ -676,24 +737,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                         <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/4"></div></td>
                       </tr>
                     ))
-                  ) : (!erTotal?.users || erTotal.users.length === 0) ? (
+                  ) : (!erTotal || (!erTotal.users && !erTotal.data?.users && !Array.isArray(erTotal.data) && !Array.isArray(erTotal))) ? (
                     <tr>
                       <td colSpan={5} className="py-6 text-center text-slate-500">
                         No registered ER users found in analytics.
                       </td>
                     </tr>
                   ) : (
-                    erTotal.users.slice((erUsersPage - 1) * 10, erUsersPage * 10).map((usr: any, i: number) => {
-                      const name = usr.firstName ? `${usr.firstName} ${usr.lastName || ''}`.trim() : usr.name || usr.email;
+                    (Array.isArray(erTotal?.users)
+                      ? erTotal.users
+                      : Array.isArray(erTotal?.data?.users)
+                      ? erTotal.data.users
+                      : Array.isArray(erTotal?.data)
+                      ? erTotal.data
+                      : Array.isArray(erTotal)
+                      ? erTotal
+                      : []
+                    ).slice((erUsersPage - 1) * 10, erUsersPage * 10).map((usr: any, i: number) => {
+                      const userObj = usr.user || usr;
+                      const name = userObj.firstName ? `${userObj.firstName} ${userObj.lastName || ''}`.trim() : userObj.name || userObj.email || 'N/A';
+                      const email = userObj.email || 'N/A';
+                      const phone = userObj.phone || 'N/A';
+                      const role = userObj.role || 'user';
+                      const userId = userObj._id || userObj.id || 'N/A';
+
                       return (
-                        <tr key={usr._id || usr.id || i} className="hover:bg-slate-800/30">
-                          <td className="py-2.5 px-3 font-mono text-[10px] text-slate-400 select-all">{usr._id || usr.id || 'N/A'}</td>
+                        <tr key={userId !== 'N/A' ? userId : i} className="hover:bg-slate-800/30">
+                          <td className="py-2.5 px-3 font-mono text-[10px] text-slate-400 select-all">{userId}</td>
                           <td className="py-2.5 px-3 font-semibold text-white">{name}</td>
-                          <td className="py-2.5 px-3 text-slate-300">{usr.email}</td>
-                          <td className="py-2.5 px-3 text-slate-300">{usr.phone || 'N/A'}</td>
+                          <td className="py-2.5 px-3 text-slate-300">{email}</td>
+                          <td className="py-2.5 px-3 text-slate-300">{phone}</td>
                           <td className="py-2.5 px-3">
                             <span className="px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800/60 text-[10px] font-semibold uppercase">
-                              {usr.role || 'user'}
+                              {role}
                             </span>
                           </td>
                         </tr>
@@ -883,13 +959,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                         <td colSpan={3} className="py-4 text-center text-slate-500">No properties assigned.</td>
                       </tr>
                     ) : (
-                      properties.slice(0, 3).map((p: any, idx: number) => (
-                        <tr key={p.id || p._id || idx}>
-                          <td className="py-2 font-semibold text-white">{p.propertyName || p.name}</td>
-                          <td className="py-2 text-slate-300">{p.propertyNumber || p.number || 'N/A'}</td>
-                          <td className="py-2 text-right text-indigo-300 font-medium">{p.agentName || p.agentId || 'Unassigned'}</td>
-                        </tr>
-                      ))
+                      properties.slice(0, 5).map((p: any, idx: number) => {
+                        const agentObj = p.assignedTo || p.agent || p.agentId;
+                        const agentName = typeof agentObj === 'object'
+                          ? (agentObj?.firstName ? `${agentObj.firstName} ${agentObj.lastName || ''}`.trim() : agentObj?.email || agentObj?.name || 'Unassigned')
+                          : (p.agentName || (p.agentId ? `Agent (${p.agentId})` : 'Unassigned'));
+                        const agentId = typeof agentObj === 'object' ? (agentObj?._id || agentObj?.id || '') : (typeof p.agentId === 'string' ? p.agentId : '');
+                        const isAssigned = p.assigned === true || p.isAssigned === true || (agentId !== '');
+
+                        return (
+                          <tr key={p.id || p._id || idx} className="hover:bg-slate-800/30">
+                            <td className="py-2 font-semibold text-white">{p.propertyName || p.name}</td>
+                            <td className="py-2 text-slate-300 font-mono text-[11px]">{p.propertyNumber || p.number || 'N/A'}</td>
+                            <td className="py-2 text-right">
+                              <div className="flex flex-col items-end">
+                                <span className={`font-medium ${isAssigned ? 'text-indigo-300' : 'text-slate-500'}`}>
+                                  {isAssigned ? agentName : 'Unassigned'}
+                                </span>
+                                {agentId && (
+                                  <span className="font-mono text-[9px] text-slate-500 select-all">
+                                    ID: {agentId}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -938,16 +1034,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 text-slate-200">
                   {isLoadingManagers ? (
-                    Array.from({ length: 4 }).map((_, i) => (
-                      <tr key={i} className="animate-pulse">
-                        <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-2/3"></div></td>
-                        <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/2"></div></td>
-                        <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-3/4"></div></td>
-                        <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/2"></div></td>
-                        <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/4"></div></td>
-                        <td className="py-2.5 px-3 text-right"><div className="h-5 bg-slate-800 rounded w-12 ml-auto"></div></td>
-                      </tr>
-                    ))
+                    <TableSkeleton rows={4} cols={6} />
                   ) : managers.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-6 text-center text-slate-500">
@@ -971,12 +1058,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                           </span>
                         </td>
                         <td className="py-2.5 px-3 text-right">
-                          <button
-                            onClick={() => handleViewManagerDetails(m.id || m._id)}
-                            className="inline-flex items-center gap-1 text-[11px] text-indigo-300 hover:text-white bg-indigo-950/60 border border-indigo-800/60 px-2.5 py-1 rounded-md cursor-pointer"
-                          >
-                            <Eye className="h-3 w-3" /> Details
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => handleViewManagerDetails(m.id || m._id)}
+                              className="inline-flex items-center gap-1 text-[11px] text-indigo-300 hover:text-white bg-indigo-950/60 border border-indigo-800/60 px-2.5 py-1 rounded-md cursor-pointer"
+                            >
+                              <Eye className="h-3 w-3" /> Details
+                            </button>
+                            <button
+                              onClick={() => handleDeleteManager(m.id || m._id, m.firstName ? `${m.firstName} ${m.lastName || ''}`.trim() : m.email)}
+                              className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-200 bg-rose-950/40 border border-rose-800/50 px-2 py-1 rounded-md cursor-pointer"
+                              title="Delete Manager"
+                            >
+                              <Trash2 className="h-3 w-3" /> Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -1055,24 +1151,52 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 mb-1 uppercase">Select User / Manager *</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1 uppercase">Select Agent or Manager *</label>
                   <select
+                    value={walletForm.userId}
+                    onChange={e => setWalletForm(prev => ({ ...prev, userId: e.target.value }))}
+                    className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none mb-1.5 cursor-pointer"
+                  >
+                    <option value="" className="bg-slate-950 text-slate-500">-- Choose Field Agent or Manager --</option>
+                    
+                    {allAgents.length > 0 && (
+                      <optgroup label="Field Agents" className="bg-slate-950 text-emerald-400 font-bold">
+                        {allAgents.map((item: any) => {
+                          const agentObj = item?.agent || item;
+                          const name = agentObj?.firstName ? `${agentObj.firstName} ${agentObj.lastName || ''}`.trim() : agentObj?.name || agentObj?.email;
+                          const id = agentObj?._id || agentObj?.id || item?._id || item?.id;
+                          return (
+                            <option key={`agent-${id}`} value={id} className="bg-slate-950 text-white font-normal">
+                              [Agent] {name} — ID: {id}
+                            </option>
+                          );
+                        })}
+                      </optgroup>
+                    )}
+
+                    {managers.length > 0 && (
+                      <optgroup label="Managers" className="bg-slate-950 text-indigo-400 font-bold">
+                        {managers.map((m: any) => {
+                          const name = m.firstName ? `${m.firstName} ${m.lastName || ''}`.trim() : m.name || m.email;
+                          const id = m._id || m.id;
+                          return (
+                            <option key={`mgr-${id}`} value={id} className="bg-slate-950 text-white font-normal">
+                              [Manager] {name} — ID: {id}
+                            </option>
+                          );
+                        })}
+                      </optgroup>
+                    )}
+                  </select>
+
+                  <input
+                    type="text"
                     required
                     value={walletForm.userId}
                     onChange={e => setWalletForm(prev => ({ ...prev, userId: e.target.value }))}
-                    className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
-                  >
-                    <option value="" className="bg-slate-950 text-slate-500">-- Choose a Manager --</option>
-                    {managers.map((m: any) => {
-                      const name = m.firstName ? `${m.firstName} ${m.lastName || ''}`.trim() : m.name || m.email;
-                      const id = m._id || m.id;
-                      return (
-                        <option key={id} value={id} className="bg-slate-950 text-white">
-                          {name} — ID: {id}
-                        </option>
-                      );
-                    })}
-                  </select>
+                    placeholder="Or enter target ID manually"
+                    className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none font-mono"
+                  />
                 </div>
 
                 <div>
@@ -1166,15 +1290,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 text-slate-200">
                   {isLoadingWithdrawals ? (
-                    Array.from({ length: 3 }).map((_, i) => (
-                      <tr key={i} className="animate-pulse">
-                        <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/2"></div></td>
-                        <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/3"></div></td>
-                        <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/4"></div></td>
-                        <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/3"></div></td>
-                        <td className="py-2.5 px-3 text-right"><div className="h-5 bg-slate-800 rounded w-16 ml-auto"></div></td>
-                      </tr>
-                    ))
+                    <TableSkeleton rows={4} cols={5} />
                   ) : pendingWithdrawals.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="py-6 text-center text-slate-500">
@@ -1257,14 +1373,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
 
               <form onSubmit={handleAssignProperty} className="space-y-3">
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 mb-1 uppercase">Agent ID *</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 mb-1 uppercase">Select Agent / Agent ID *</label>
+                  {allAgents.length > 0 && (
+                    <select
+                      value={assignForm.agentId}
+                      onChange={e => setAssignForm(prev => ({ ...prev, agentId: e.target.value }))}
+                      className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none mb-1.5 cursor-pointer"
+                    >
+                      <option value="" className="bg-slate-950 text-slate-500">-- Choose Field Agent --</option>
+                      {allAgents.map((item: any) => {
+                        const agentObj = item?.agent || item;
+                        const name = agentObj?.firstName ? `${agentObj.firstName} ${agentObj.lastName || ''}`.trim() : agentObj?.name || agentObj?.email;
+                        const id = agentObj?._id || agentObj?.id || item?._id || item?.id;
+                        return (
+                          <option key={id} value={id} className="bg-slate-950 text-white">
+                            {name} — ID: {id}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  )}
                   <input
                     type="text"
                     required
                     value={assignForm.agentId}
                     onChange={e => setAssignForm(prev => ({ ...prev, agentId: e.target.value }))}
-                    placeholder="Enter Agent ID"
-                    className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                    placeholder="Or enter Agent ID manually"
+                    className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none font-mono"
                   />
                 </div>
 
@@ -1315,7 +1450,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                       <th className="py-2.5 px-3">Property Name</th>
                       <th className="py-2.5 px-3">Property Number</th>
                       <th className="py-2.5 px-3">Assigned Agent</th>
+                      <th className="py-2.5 px-3">Agent ID</th>
                       <th className="py-2.5 px-3">Status</th>
+                      <th className="py-2.5 px-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 text-slate-200">
@@ -1325,28 +1462,68 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                           <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-2/3"></div></td>
                           <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/3"></div></td>
                           <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/2"></div></td>
+                          <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/3"></div></td>
                           <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/4"></div></td>
+                          <td className="py-2.5 px-3 text-right"><div className="h-5 bg-slate-800 rounded w-14 ml-auto"></div></td>
                         </tr>
                       ))
                     ) : properties.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="py-6 text-center text-slate-500">
+                        <td colSpan={6} className="py-6 text-center text-slate-500">
                           {isLoadingProperties ? 'Loading properties...' : 'No properties found. Use the form to assign a property.'}
                         </td>
                       </tr>
                     ) : (
-                      properties.slice((propertiesPage - 1) * 10, propertiesPage * 10).map((p: any, idx: number) => (
-                        <tr key={p.id || p._id || idx} className="hover:bg-slate-800/40">
-                          <td className="py-2.5 px-3 font-semibold text-white">{p.propertyName || p.name}</td>
-                          <td className="py-2.5 px-3 text-slate-300">{p.propertyNumber || p.number || 'N/A'}</td>
-                          <td className="py-2.5 px-3 text-indigo-300 font-medium">{p.agentName || p.agentId || 'Unassigned'}</td>
-                          <td className="py-2.5 px-3">
-                            <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800/60 text-[10px] font-semibold">
-                              {p.status || 'Active'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
+                      properties.slice((propertiesPage - 1) * 10, propertiesPage * 10).map((p: any, idx: number) => {
+                        const agentObj = p.assignedTo || p.agent || p.agentId;
+                        const agentId = typeof agentObj === 'object' ? (agentObj?._id || agentObj?.id || 'N/A') : (typeof p.agentId === 'string' ? p.agentId : 'N/A');
+                        const agentName = typeof agentObj === 'object'
+                          ? (agentObj?.firstName ? `${agentObj.firstName} ${agentObj.lastName || ''}`.trim() : agentObj?.email || agentObj?.name)
+                          : (p.agentName || (p.agentId ? `Agent (${p.agentId})` : 'Unassigned'));
+
+                        const isAssigned = p.assigned === true || p.isAssigned === true || (agentId !== 'N/A' && agentId !== '');
+
+                        return (
+                          <tr key={p.id || p._id || idx} className="hover:bg-slate-800/40">
+                            <td className="py-2.5 px-3 font-semibold text-white">{p.propertyName || p.name}</td>
+                            <td className="py-2.5 px-3 text-slate-300 font-mono text-[11px]">{p.propertyNumber || p.number || 'N/A'}</td>
+                            <td className="py-2.5 px-3 text-indigo-300 font-medium">{agentName}</td>
+                            <td className="py-2.5 px-3 text-slate-400 font-mono text-[10px] select-all">{agentId}</td>
+                            <td className="py-2.5 px-3">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${isAssigned ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/60' : 'bg-slate-900 text-slate-400 border border-slate-800'}`}>
+                                {isAssigned ? 'Assigned' : (p.status || 'Available')}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-right">
+                              {isAssigned ? (
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-md cursor-not-allowed opacity-60 whitespace-nowrap shrink-0"
+                                  title="Agent is already assigned to this property"
+                                >
+                                  <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-500" /> Assigned
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAssignForm({
+                                      agentId: '',
+                                      propertyName: p.propertyName || p.name || '',
+                                      propertyNumber: p.propertyNumber || p.number || ''
+                                    });
+                                  }}
+                                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-300 hover:text-white bg-indigo-950/60 border border-indigo-800/60 px-2.5 py-1 rounded-md cursor-pointer whitespace-nowrap shrink-0"
+                                  title="Assign Agent to this Property"
+                                >
+                                  <PlusCircle className="h-3 w-3 shrink-0" /> Assign Agent
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -1957,22 +2134,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeSection = 
                   <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Created By / Provisioned By</label>
                   <input
                     type="text"
-                    value={managerForm.createdBy || currentUser?.name || currentUser?.id || 'Admin'}
-                    onChange={e => setManagerForm(prev => ({ ...prev, createdBy: e.target.value }))}
-                    placeholder="Admin Identifier"
-                    className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    disabled
+                    readOnly
+                    value={currentUser?.name || currentUser?.email || currentUser?.id || 'Admin'}
+                    className="w-full rounded-lg border border-slate-800 bg-slate-900/60 py-2 px-3 text-xs text-slate-400 cursor-not-allowed select-all"
                   />
+                  <p className="text-[10px] text-slate-500 mt-1">Automatically recorded from current admin session. Read-only field.</p>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Custom Manager ID (Optional)</label>
+                  <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Manager ID (System Generated)</label>
                   <input
                     type="text"
-                    value={managerForm.managerId}
-                    onChange={e => setManagerForm(prev => ({ ...prev, managerId: e.target.value }))}
-                    placeholder="Leave empty for auto-generated ID"
-                    className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    disabled
+                    readOnly
+                    value="Auto-generated by system"
+                    className="w-full rounded-lg border border-slate-800 bg-slate-900/60 py-2 px-3 text-xs text-slate-400 cursor-not-allowed select-all font-mono"
                   />
+                  <p className="text-[10px] text-slate-500 mt-1">IDs are system-managed and cannot be manually assigned or edited.</p>
                 </div>
               </div>
             )}

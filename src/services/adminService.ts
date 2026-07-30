@@ -44,15 +44,23 @@ export interface ManagerPayload {
 }
 
 export interface WalletOperationPayload {
-  userId: string;
+  userId?: string;
+  agentId?: string;
+  managerId?: string;
   amount: number | string;
-  description: string;
+  description?: string;
+  type?: string;
+  remarks?: string;
 }
 
 export interface AssignPropertyPayload {
   agentId: string;
   propertyName: string;
   propertyNumber: string;
+  isAssigned?: boolean;
+  assigned?: boolean;
+  status?: string;
+  [key: string]: any;
 }
 
 export const adminService = {
@@ -89,12 +97,9 @@ export const adminService = {
       if (typeof sanitizedPayload.managerId === 'string' && !sanitizedPayload.managerId.trim()) {
         delete sanitizedPayload.managerId;
       }
-      console.log('=== [adminService.createManager] Sending Request Payload ===', sanitizedPayload);
       const response = await axios.post(apiUrl(API_CONFIG.ENDPOINTS.ADMIN.MANAGERS), sanitizedPayload);
-      console.log('=== [adminService.createManager] Response Data ===', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('=== [adminService.createManager] Request Error ===', error?.response?.data || error?.response || error);
       throw error;
     }
   },
@@ -109,6 +114,45 @@ export const adminService = {
   getManagerDetails: async (id: string) => {
     try {
       const response = await axios.get(apiUrl(API_CONFIG.ENDPOINTS.ADMIN.MANAGER_DETAILS(id)));
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+  deleteManager: async (id: string) => {
+    try {
+      const response = await axios.delete(apiUrl(API_CONFIG.ENDPOINTS.ADMIN.DELETE_MANAGER(id)));
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+
+  // Agent Management
+  getAgents: async () => {
+    try {
+      const response = await axios.get(apiUrl(API_CONFIG.ENDPOINTS.ADMIN.AGENTS));
+      return response.data;
+    } catch (error: any) {
+      try {
+        const fallbackRes = await axios.get(apiUrl('/admin/agent'));
+        return fallbackRes.data;
+      } catch (err) {
+        throw error;
+      }
+    }
+  },
+  approveAgent: async (id: string) => {
+    try {
+      const response = await axios.put(apiUrl(API_CONFIG.ENDPOINTS.ADMIN.APPROVE_AGENT(id)));
+      return response.data;
+    } catch (error: any) {
+      throw error;
+    }
+  },
+  deleteAgent: async (id: string) => {
+    try {
+      const response = await axios.delete(apiUrl(API_CONFIG.ENDPOINTS.ADMIN.DELETE_AGENT(id)));
       return response.data;
     } catch (error: any) {
       throw error;
@@ -162,7 +206,16 @@ export const adminService = {
   },
   assignPropertyToAgent: async (payload: AssignPropertyPayload) => {
     try {
-      const response = await axios.post(apiUrl(API_CONFIG.ENDPOINTS.ADMIN.ASSIGN_PROPERTY), payload);
+      const sanitizedPayload: any = { ...payload };
+      sanitizedPayload.isAssigned = true;
+      sanitizedPayload.assigned = true;
+
+      // Delete status field if it is set to string 'assigned' to avoid Mongoose enum validation error
+      if (typeof sanitizedPayload.status === 'string' && sanitizedPayload.status.toLowerCase() === 'assigned') {
+        delete sanitizedPayload.status;
+      }
+
+      const response = await axios.post(apiUrl(API_CONFIG.ENDPOINTS.ADMIN.ASSIGN_PROPERTY), sanitizedPayload);
       return response.data;
     } catch (error: any) {
       throw error;

@@ -7,18 +7,16 @@ import { useAuth } from '@context/AuthContext';
 import {
   Shield,
   BarChart3,
-  Users,
-  UserCheck,
   Wallet,
-  Clock,
   Building,
   Menu,
   X,
   LogOut,
-  User as UserIcon
+  User as UserIcon,
+  CheckSquare
 } from 'lucide-react';
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AgentLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { logout, currentUser } = useAuth();
@@ -26,38 +24,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const menuItems = [
     {
-      name: 'ER Overview',
-      path: '/admin/er',
-      icon: BarChart3,
+      name: 'Agent Workspace',
+      path: '/agent',
+      icon: CheckSquare,
     },
     {
-      name: 'Managers',
-      path: '/admin/managers',
-      icon: Users,
-    },
-    {
-      name: 'Agents Directory',
-      path: '/admin/agents',
-      icon: UserCheck,
-    },
-    {
-      name: 'Wallet Operations',
-      path: '/admin/wallet',
+      name: 'Wallet & Withdrawals',
+      path: '/agent/wallet',
       icon: Wallet,
     },
     {
-      name: 'Withdrawals',
-      path: '/admin/withdrawals',
-      icon: Clock,
-    },
-    {
-      name: 'Properties',
-      path: '/admin/properties',
+      name: 'Assigned Properties',
+      path: '/agent/properties',
       icon: Building,
     },
     {
       name: 'My Profile',
-      path: '/admin/profile',
+      path: '/agent/profile',
       icon: UserIcon,
     },
   ];
@@ -72,8 +55,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Mobile Header */}
       <header className="md:hidden flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800 shrink-0">
         <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-indigo-400" />
-          <span className="font-extrabold text-sm tracking-wider text-white">ADMIN PORTAL</span>
+          <Shield className="h-5 w-5 text-emerald-400" />
+          <span className="font-extrabold text-sm tracking-wider text-white">AGENT PORTAL</span>
         </div>
         <button
           onClick={() => setIsMobileOpen(!isMobileOpen)}
@@ -90,10 +73,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }`}
       >
         <div className="space-y-6">
-          {/* Logo */}
+          {/* Header Title */}
           <div className="hidden md:flex items-center gap-2.5 px-2 py-1.5">
-            <Shield className="h-6 w-6 text-indigo-400" />
-            <span className="font-black text-base tracking-wider text-white">ADMIN PORTAL</span>
+            <Shield className="h-6 w-6 text-emerald-400" />
+            <span className="font-black text-base tracking-wider text-white">AGENT PORTAL</span>
           </div>
 
           {/* Company Brand Logo and Name */}
@@ -103,14 +86,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
             <div>
               <div className="font-bold text-sm text-white">MK360</div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Portal System</div>
+              <div className="text-[10px] text-emerald-400 uppercase tracking-wider font-semibold">Agent Operations</div>
             </div>
           </div>
 
           {/* Nav Links */}
           <nav className="space-y-1.5">
             {menuItems.map((item) => {
-              const isActive = pathname === item.path || (item.path === '/admin/er' && pathname === '/admin');
+              const isActive = pathname === item.path;
               const Icon = item.icon;
               return (
                 <Link
@@ -119,7 +102,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   onClick={() => setIsMobileOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
                     isActive
-                      ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/40'
+                      ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
                       : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
                   }`}
                 >
@@ -133,6 +116,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Footer actions */}
         <div className="pt-4 border-t border-slate-800">
+          <div className="mb-3 px-2 text-[11px] text-slate-400">
+            Agent: <strong className="text-white">{currentUser?.name || 'Field Agent'}</strong>
+          </div>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-rose-400 hover:text-rose-300 hover:bg-rose-950/20 transition-all cursor-pointer"

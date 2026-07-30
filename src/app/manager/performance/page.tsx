@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useToast } from '@context/ToastContext';
+import { TableSkeleton } from '@components/Common/Skeleton';
 import { useAuth } from '@context/AuthContext';
 import { managerService } from '@/services/managerService';
 import { Modal } from '@components/Common/Modal';
@@ -111,23 +112,33 @@ export default function ManagerPerformancePage() {
     }
   }, [registerAgentTab]);
 
+  const [teamAverages, setTeamAverages] = useState<any>(null);
+
   const fetchPerformance = async () => {
     setIsLoading(true);
     setCurrentPage(1);
     try {
       const res = await managerService.getAgentsPerformance();
-      let list = res?.data || res?.agents || res;
-      if (list && !Array.isArray(list) && typeof list === 'object') {
-        const possibleArray = Object.values(list).find(val => Array.isArray(val));
-        if (possibleArray) {
-          list = possibleArray;
-        } else if (Array.isArray(list.data)) {
-          list = list.data;
-        }
+      
+      const rawData = res?.data || res;
+      const agentsArray = Array.isArray(rawData?.agents)
+        ? rawData.agents
+        : Array.isArray(res?.agents)
+        ? res.agents
+        : Array.isArray(rawData)
+        ? rawData
+        : Array.isArray(res)
+        ? res
+        : [];
+
+      const averages = rawData?.teamAverages || res?.teamAverages || null;
+
+      setAgentsList(agentsArray);
+      if (averages) {
+        setTeamAverages(averages);
       }
-      setAgentsList(Array.isArray(list) ? list : []);
     } catch (e: any) {
-      // Quiet fail
+      // Quiet handle
     } finally {
       setIsLoading(false);
     }
@@ -168,12 +179,13 @@ export default function ManagerPerformancePage() {
       return;
     }
 
-    setIsSubmitting(true);
+    const activeManagerId = agentForm.managerId || currentUser?.id || (currentUser as any)?._id || (currentUser as any)?.userId || '';
+
     const payload: any = {
       ...agentForm,
       role: 'agent',
-      managerId: agentForm.managerId || currentUser?.id || '',
-      createdBy: agentForm.createdBy || currentUser?.id || currentUser?.name || currentUser?.email || 'manager'
+      managerId: activeManagerId,
+      createdBy: agentForm.createdBy || activeManagerId || currentUser?.name || currentUser?.email || 'manager'
     };
 
     // Remove empty string managerId so MongoDB Mongoose does not attempt Cast to ObjectId
@@ -181,33 +193,55 @@ export default function ManagerPerformancePage() {
       delete payload.managerId;
     }
 
-    // Check Guarantor Name requirement
-    if (payload.guarantors && Array.isArray(payload.guarantors) && payload.guarantors.length > 0) {
-      const g = payload.guarantors[0];
-      const hasAnyGuarantorData = g.name || g.phone || g.address || g.state || g.lga || g.relationship;
-      if (hasAnyGuarantorData && !g.name?.trim()) {
-        showToast('Guarantor Name is required in the Guarantor tab.', 'error');
-        setRegisterAgentTab('guarantor');
-        setIsSubmitting(false);
-        return;
-      }
-      if (!hasAnyGuarantorData) {
-        delete payload.guarantors;
-      }
+    // Require Guarantor Name
+    const guarantorName = agentForm.guarantors[0]?.name?.trim();
+    if (!guarantorName) {
+      showToast('Guarantor Name is required in the Guarantor tab.', 'error');
+      setRegisterAgentTab('guarantor');
+      setIsSubmitting(false);
+      return;
     }
 
-    // Remove empty nextOfKin object if no fields were provided
-    if (payload.nextOfKin) {
-      const nok = payload.nextOfKin;
-      if (!nok.name && !nok.phone && !nok.address && !nok.state && !nok.lga && !nok.relationship) {
-        delete payload.nextOfKin;
-      }
+    const guarantorObj = {
+      name: guarantorName,
+      phone: agentForm.guarantors[0]?.phone?.trim() || '',
+      address: agentForm.guarantors[0]?.address?.trim() || '',
+      state: agentForm.guarantors[0]?.state || '',
+      lga: agentForm.guarantors[0]?.lga || '',
+      relationship: agentForm.guarantors[0]?.relationship?.trim() || ''
+    };
+    payload.guarantors = [guarantorObj];
+    payload.guarantor = guarantorObj;
+    payload.guarantorName = guarantorName;
+    payload.guarantorPhone = guarantorObj.phone;
+    payload.guarantorAddress = guarantorObj.address;
+    payload.guarantorState = guarantorObj.state;
+    payload.guarantorLga = guarantorObj.lga;
+    payload.guarantorRelationship = guarantorObj.relationship;
+
+    // Handle nextOfKin flat and nested fields
+    if (agentForm.nextOfKin && agentForm.nextOfKin.name?.trim()) {
+      const nokObj = {
+        name: agentForm.nextOfKin.name.trim(),
+        phone: agentForm.nextOfKin.phone?.trim() || '',
+        address: agentForm.nextOfKin.address?.trim() || '',
+        state: agentForm.nextOfKin.state || '',
+        lga: agentForm.nextOfKin.lga || '',
+        relationship: agentForm.nextOfKin.relationship?.trim() || ''
+      };
+      payload.nextOfKin = nokObj;
+      payload.nextOfKinName = nokObj.name;
+      payload.nextOfKinPhone = nokObj.phone;
+      payload.nextOfKinAddress = nokObj.address;
+      payload.nextOfKinState = nokObj.state;
+      payload.nextOfKinLga = nokObj.lga;
+      payload.nextOfKinRelationship = nokObj.relationship;
+    } else if (payload.nextOfKin) {
+      delete payload.nextOfKin;
     }
 
-    console.log('=== [ManagerPerformancePage] Register Agent Payload ===', payload);
     try {
       const response = await managerService.registerAgent(payload);
-      console.log('=== [ManagerPerformancePage] Register Agent Response ===', response);
       showToast(`Agent "${agentForm.firstName} ${agentForm.lastName}" registered successfully!`, 'success');
       setAgentForm({
         firstName: '',
@@ -242,18 +276,19 @@ export default function ManagerPerformancePage() {
       setIsRegisterOpen(false);
       fetchPerformance();
     } catch (err: any) {
-      console.error('=== [ManagerPerformancePage] Register Agent Error ===', err);
-      console.error('=== [ManagerPerformancePage] Register Agent Error Details ===', err?.response?.data || err?.response || err);
       showToast(err?.response?.data?.message || err?.message || 'Failed to register agent.', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const filteredAgents = agentsList.filter((a: any) => {
-    const fullName = `${a.firstName || ''} ${a.lastName || ''} ${a.name || ''}`.toLowerCase();
-    const email = (a.email || '').toLowerCase();
-    return fullName.includes(searchTerm.toLowerCase()) || email.includes(searchTerm.toLowerCase());
+  const filteredAgents = agentsList.filter((item: any) => {
+    const agentObj = item?.agent || item;
+    const fullName = `${agentObj?.firstName || ''} ${agentObj?.lastName || ''} ${agentObj?.name || ''}`.toLowerCase();
+    const email = (agentObj?.email || '').toLowerCase();
+    const phone = (agentObj?.phone || '').toLowerCase();
+    const query = searchTerm.toLowerCase();
+    return fullName.includes(query) || email.includes(query) || phone.includes(query);
   });
 
   const AGENT_TABS: ('account' | 'personal' | 'bank' | 'guarantor' | 'nextOfKin' | 'system')[] = [
@@ -281,6 +316,43 @@ export default function ManagerPerformancePage() {
           <PlusCircle className="h-3.5 w-3.5" /> Register Agent
         </button>
       </div>
+
+      {/* Team Averages Metric Cards */}
+      {teamAverages && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 space-y-1">
+            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Average Team Score</div>
+            <div className="text-xl font-extrabold text-emerald-400">
+              {teamAverages.averageScore ?? 0}%
+            </div>
+            <div className="text-[10px] text-slate-500">Calculated overall performance score</div>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 space-y-1">
+            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Avg Properties / Agent</div>
+            <div className="text-xl font-extrabold text-blue-400">
+              {teamAverages.averageProperties ?? 0}
+            </div>
+            <div className="text-[10px] text-slate-500">Properties assigned per active agent</div>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 space-y-1">
+            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Average Capacity Utilization</div>
+            <div className="text-xl font-extrabold text-purple-400">
+              {teamAverages.averageUtilization || '0%'}
+            </div>
+            <div className="text-[10px] text-slate-500">Team operational workload throughput</div>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-900/90 p-4 space-y-1">
+            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Total Team Properties</div>
+            <div className="text-xl font-extrabold text-amber-400">
+              {teamAverages.totalTeamProperties ?? 0}
+            </div>
+            <div className="text-[10px] text-slate-500">Total assets managed by team</div>
+          </div>
+        </div>
+      )}
 
       {/* Agents Search & Directory */}
       <div className="space-y-4">
@@ -321,16 +393,7 @@ export default function ManagerPerformancePage() {
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-slate-200">
                 {isLoading ? (
-                  Array.from({ length: 4 }).map((_, i) => (
-                    <tr key={i} className="animate-pulse">
-                      <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-2/3"></div></td>
-                      <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/2"></div></td>
-                      <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-3/4"></div></td>
-                      <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/2"></div></td>
-                      <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/4"></div></td>
-                      <td className="py-2.5 px-3 text-right"><div className="h-4 bg-slate-800 rounded w-10 ml-auto"></div></td>
-                    </tr>
-                  ))
+                  <TableSkeleton rows={4} cols={6} />
                 ) : filteredAgents.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-6 text-center text-slate-500">
@@ -338,20 +401,44 @@ export default function ManagerPerformancePage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredAgents.slice((currentPage - 1) * 10, currentPage * 10).map((agent: any, idx: number) => {
-                    const name = agent.firstName ? `${agent.firstName} ${agent.lastName || ''}`.trim() : agent.name || agent.email;
-                    const performanceScore = agent.performanceScore ?? agent.score ?? 100;
+                  filteredAgents.slice((currentPage - 1) * 10, currentPage * 10).map((item: any, idx: number) => {
+                    const agentObj = item?.agent || item;
+                    const perfObj = item?.performance || {};
+                    const name = agentObj?.firstName ? `${agentObj.firstName} ${agentObj.lastName || ''}`.trim() : agentObj?.name || agentObj?.email || 'Unknown Agent';
+                    const email = agentObj?.email || 'N/A';
+                    const phone = agentObj?.phone || 'N/A';
+                    const performanceScore = perfObj?.score ?? item?.performanceScore ?? item?.score ?? 0;
+                    const activeTasks = perfObj?.properties?.total ?? item?.activeTasks ?? item?.tasksCount ?? 0;
+                    const rating = perfObj?.rating;
+                    const agentId = agentObj?._id || agentObj?.id || item?._id || item?.id || 'N/A';
+
+                    let ratingBadgeColor = 'text-slate-400 bg-slate-900 border-slate-700';
+                    if (rating === 'Needs Improvement') {
+                      ratingBadgeColor = 'text-amber-400 bg-amber-950/40 border-amber-800/50';
+                    } else if (rating === 'Good' || rating === 'Satisfactory') {
+                      ratingBadgeColor = 'text-blue-400 bg-blue-950/40 border-blue-800/50';
+                    } else if (rating === 'Excellent' || rating === 'Outstanding') {
+                      ratingBadgeColor = 'text-emerald-400 bg-emerald-950/40 border-emerald-800/50';
+                    }
+
                     return (
-                      <tr key={agent.id || agent._id || idx} className="hover:bg-slate-800/40">
-                        <td className="py-2.5 px-3 font-mono text-[10px] text-slate-400 select-all">{agent._id || agent.id || 'N/A'}</td>
+                      <tr key={agentId !== 'N/A' ? agentId : idx} className="hover:bg-slate-800/40">
+                        <td className="py-2.5 px-3 font-mono text-[10px] text-slate-400 select-all">{agentId}</td>
                         <td className="py-2.5 px-3 font-semibold text-white">{name}</td>
-                        <td className="py-2.5 px-3 text-slate-300">{agent.email}</td>
-                        <td className="py-2.5 px-3 text-slate-300">{agent.phone || 'N/A'}</td>
-                        <td className="py-2.5 px-3 text-slate-300 font-medium">{agent.activeTasks ?? agent.tasksCount ?? 0}</td>
+                        <td className="py-2.5 px-3 text-slate-300">{email}</td>
+                        <td className="py-2.5 px-3 text-slate-300">{phone}</td>
+                        <td className="py-2.5 px-3 text-slate-300 font-medium">{activeTasks}</td>
                         <td className="py-2.5 px-3 text-right">
-                          <span className="inline-flex items-center gap-0.5 font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 px-2 py-0.5 rounded text-[10px]">
-                            <Award className="h-3 w-3" /> {performanceScore}%
-                          </span>
+                          <div className="flex items-center justify-end gap-1.5">
+                            {rating && (
+                              <span className={`inline-flex items-center text-[9px] font-semibold border px-1.5 py-0.5 rounded ${ratingBadgeColor}`}>
+                                {rating}
+                              </span>
+                            )}
+                            <span className="inline-flex items-center gap-0.5 font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 px-2 py-0.5 rounded text-[10px]">
+                              <Award className="h-3 w-3" /> {performanceScore}%
+                            </span>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -964,23 +1051,24 @@ export default function ManagerPerformancePage() {
                   <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Assigned Manager ID</label>
                   <input
                     type="text"
-                    value={agentForm.managerId || currentUser?.id || ''}
-                    onChange={e => setAgentForm(prev => ({ ...prev, managerId: e.target.value }))}
-                    placeholder={currentUser?.id || "e.g. u-102"}
-                    className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    disabled
+                    readOnly
+                    value={currentUser?.id || (currentUser as any)?._id || 'Auto-assigned'}
+                    className="w-full rounded-lg border border-slate-800 bg-slate-900/60 py-2 px-3 text-xs text-slate-400 cursor-not-allowed select-all font-mono"
                   />
-                  <p className="text-[10px] text-slate-500 mt-1">Defaults to your manager ID ({currentUser?.id || 'current manager'}) if left blank.</p>
+                  <p className="text-[10px] text-slate-500 mt-1">Automatically assigned to your Manager ID account. Read-only field.</p>
                 </div>
 
                 <div>
                   <label className="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Created By / Registered By</label>
                   <input
                     type="text"
-                    value={agentForm.createdBy || currentUser?.name || currentUser?.id || 'Manager'}
-                    onChange={e => setAgentForm(prev => ({ ...prev, createdBy: e.target.value }))}
-                    placeholder="Manager Identifier"
-                    className="w-full rounded-lg border border-slate-800 bg-slate-950 py-2 px-3 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    disabled
+                    readOnly
+                    value={currentUser?.name || currentUser?.email || currentUser?.id || 'Manager'}
+                    className="w-full rounded-lg border border-slate-800 bg-slate-900/60 py-2 px-3 text-xs text-slate-400 cursor-not-allowed select-all"
                   />
+                  <p className="text-[10px] text-slate-500 mt-1">Automatically recorded from current manager session. Read-only field.</p>
                 </div>
               </div>
             )}

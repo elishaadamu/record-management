@@ -27,7 +27,7 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4 sm:p-6">
+    <div className="fixed inset-0 z-50 overflow-y-auto p-4 sm:p-6 flex items-center justify-center min-h-screen">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
@@ -36,13 +36,13 @@ export const Modal: React.FC<ModalProps> = ({
 
       {/* Dialog container */}
       <div
-        className={`relative w-full ${widthClasses[maxWidth]} rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl transition-all`}
+        className={`relative my-auto mx-auto w-full ${widthClasses[maxWidth]} rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-6 shadow-2xl transition-all z-10`}
       >
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
+          <h3 className="text-base sm:text-lg font-semibold text-white">{title}</h3>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>

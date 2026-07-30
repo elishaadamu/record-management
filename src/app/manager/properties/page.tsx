@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useToast } from '@context/ToastContext';
+import { TableSkeleton } from '@components/Common/Skeleton';
 import { managerService } from '@/services/managerService';
 import {
   Building,
@@ -78,14 +80,7 @@ export default function ManagerPropertiesPage() {
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-slate-200">
               {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-2/3"></div></td>
-                    <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/3"></div></td>
-                    <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/2"></div></td>
-                    <td className="py-2.5 px-3"><div className="h-3 bg-slate-800 rounded w-1/4"></div></td>
-                  </tr>
-                ))
+                <TableSkeleton rows={4} cols={4} />
               ) : propertiesList.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="py-6 text-center text-slate-500">

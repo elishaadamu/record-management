@@ -80,12 +80,9 @@ export const managerService = {
       if (typeof sanitizedPayload.createdBy === 'string' && !sanitizedPayload.createdBy.trim()) {
         delete sanitizedPayload.createdBy;
       }
-      console.log('=== [managerService.registerAgent] Request Payload ===', sanitizedPayload);
       const response = await axios.post(apiUrl(API_CONFIG.ENDPOINTS.AUTH.SIGNUP), sanitizedPayload);
-      console.log('=== [managerService.registerAgent] Response ===', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('=== [managerService.registerAgent] Error ===', error?.response?.data || error?.response || error);
       throw error;
     }
   },
